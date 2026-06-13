@@ -9,11 +9,12 @@ Lokalny Stream Deck z telefonu Huawei P8 Lite, sterowany przez USB i `adb revers
 - multimedia, programy, skróty Windows, sekwencje akcji i mikser głośności aplikacji
 - Studio PC do edycji kafelków, kolejności, kolorów i akcji, z wyszukiwalnym katalogiem ponad 140 ikon
 - wybór miasta z listy lub bezpośrednio z mapy OpenStreetMap
-- regulowany kolor akcentu, płynne przyciemnienie po 90 sekundach i wygaszacz z pogodą na siedem dni oraz sekundami przy zegarze
+- regulowany kolor akcentu, płynne przyciemnienie po ustawionym czasie i wygaszacz z pogodą na siedem dni oraz sekundami przy zegarze
 - pasek stanu z połączeniem USB, prądem baterii i poziomem naładowania
 - krótki komunikat o niedostępnym PC, a następnie lokalny wygaszacz z pogodą zapisaną w cache telefonu
 - obniżenie jasności przez natywne API Androida oraz okresowe przesuwanie i zamianę elementów wygaszacza
 - natychmiastowa synchronizacja koloru ze Studio oraz adaptacyjna jasność wygaszacza zależna od wschodu i zachodu słońca
+- godziny wschodu i zachodu dla całego tygodnia oraz autonomiczne odświeżanie pogody przez Wi-Fi po wyłączeniu PC
 - moduły Magisk do uśpienia po odłączeniu, wyłączenia radia, DT2W i usunięcia blokady
 - dwuczęściowa obudowa P8 Lite gotowa do druku 3D
 
@@ -48,7 +49,7 @@ Automatyczny start razem z Windows:
 
 Gotowe paczki znajdują się w `dist`:
 
-- `EndoDeck-Power-Guard-Magisk.zip` monitoruje hosta USB, wyłącza Wi-Fi, Bluetooth, dane, lokalizację i modem przez tryb samolotowy, a po 45 sekundach od odłączenia wygasza ekran i wymusza deep idle.
+- `EndoDeck-Power-Guard-Magisk.zip` monitoruje hosta i zasilanie USB. Przy wyłączonym PC, ale obecnym zasilaniu, utrzymuje lokalny wygaszacz i Wi-Fi pogodowe; po faktycznym odpięciu wyłącza radia, a po 45 sekundach wygasza ekran i wymusza deep idle.
 - `EndoDeck-Touch-Wake-Magisk.zip` włącza sprzętowe double-tap-to-wake Huawei i wyłącza ekran blokady.
 
 Instalacja obu paczek przez ADB i Magisk:
@@ -69,7 +70,7 @@ Mikser używa Windows Core Audio. Pokazuje poziom systemowy oraz aplikacje mają
 
 Wartość mA pochodzi z czujnika baterii telefonu. Jest najlepszym dostępnym przybliżeniem bilansu energii, ale P8 Lite nie udostępnia osobnego czujnika prądu wejściowego USB.
 
-Telefon zapisuje ostatnią poprawną prognozę w pamięci aplikacji, dlatego pogoda pozostaje dostępna również po utracie połączenia z serwerem. Gdy połączenie wróci, cache jest automatycznie odświeżany. Ustawienia dostępne bezpośrednio na decku są celowo ograniczone do koloru akcentu i czasów bezczynności; pełna edycja kafelków pozostaje w Studio PC.
+Telefon zapisuje ostatnią poprawną prognozę w pamięci aplikacji, dlatego pogoda pozostaje dostępna również po utracie połączenia z serwerem. Lokalny wygaszacz może dodatkowo odświeżać Open-Meteo bezpośrednio przez Wi-Fi co 15 minut. Zegar i reguły jasności noc/dzień/wschód/zachód są przeliczane lokalnie i nie wymagają działającego PC. Ustawienia dostępne bezpośrednio na decku są celowo ograniczone do koloru akcentu i czasów bezczynności; pełna edycja kafelków pozostaje w Studio PC.
 
 Panel tego egzemplarza P8 Lite zgłasza tylko jeden sprzętowy tryb: `720 x 1280 @ 60 Hz`. System ani sterownik nie udostępniają bezpiecznego trybu 30 lub 48 Hz, dlatego optymalizacja energii korzysta z niskiej jasności, spokojnych animacji i wygaszania zamiast ryzykownego wymuszania częstotliwości.
 

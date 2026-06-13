@@ -190,11 +190,12 @@ function updateClock() {
 
 const weatherLabels = { 0:["SŁONECZNIE","☀"],1:["PRAWIE BEZCHMURNIE","◒"],2:["CZĘŚCIOWE ZACHMURZENIE","◑"],3:["POCHMURNO","☁"],45:["MGŁA","≋"],48:["SZADŹ","≋"],51:["MŻAWKA","⋰"],53:["MŻAWKA","⋰"],55:["MŻAWKA","⋰"],61:["DESZCZ","↯"],63:["DESZCZ","↯"],65:["ULEWA","↯"],71:["ŚNIEG","✦"],73:["ŚNIEG","✦"],75:["ŚNIEŻYCA","✦"],80:["PRZELOTNY DESZCZ","↯"],81:["PRZELOTNY DESZCZ","↯"],82:["ULEWA","↯"],95:["BURZA","ϟ"],96:["BURZA Z GRADEM","ϟ"],99:["BURZA Z GRADEM","ϟ"] };
 function weatherInfo(code) { return weatherLabels[code] ?? ["ZMIENNA POGODA", "·"]; }
+function shortTime(value) { return String(value ?? "").split("T")[1]?.slice(0, 5) ?? "--:--"; }
 function renderWeather(weather) {
   const [label, symbol] = weatherInfo(weather.current.code);
   $("#weather-symbol").textContent = symbol; $("#weather-temp").textContent = `${weather.current.temperature}°`; $("#weather-city").textContent = weather.city;
   $("#weather-description").textContent = `${label} · ODCZUWALNA ${weather.current.apparent}° · WIATR ${weather.current.wind} KM/H`;
-  $("#forecast").innerHTML = weather.daily.map((day) => { const date = new Date(`${day.date}T12:00:00`); const [, daySymbol] = weatherInfo(day.code); return `<div class="forecast-day"><b>${new Intl.DateTimeFormat("pl-PL", { weekday: "short" }).format(date)}</b><span>${daySymbol}</span><strong>${day.max}°</strong><small>${day.min}° · ${day.rain}%</small></div>`; }).join("");
+  $("#forecast").innerHTML = weather.daily.map((day) => { const date = new Date(`${day.date}T12:00:00`); const [, daySymbol] = weatherInfo(day.code); return `<div class="forecast-day"><b>${new Intl.DateTimeFormat("pl-PL", { weekday: "short" }).format(date)}</b><span>${daySymbol}</span><strong>${day.max}°</strong><small class="forecast-meta">${day.min}° · ${day.rain}%</small><small class="sun-times"><span>↑ ${shortTime(day.sunrise)}</span><span>↓ ${shortTime(day.sunset)}</span></small></div>`; }).join("");
 }
 
 function cacheAccent(accent) {

@@ -29,6 +29,8 @@ export async function getWeather(settings = {}) {
   }));
   const data = {
     city,
+    latitude,
+    longitude,
     timezone: raw.timezone,
     utcOffsetSeconds: raw.utc_offset_seconds ?? 0,
     current: {

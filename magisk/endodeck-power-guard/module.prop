@@ -1,6 +1,6 @@
 id=endodeck_power_guard
 name=EndoDeck Power Guard
-version=1.0.0
-versionCode=100
+version=1.1.0
+versionCode=110
 author=Kejlo523 / Codex
-description=USB host monitor, radio shutdown and deep sleep profile for the EndoDeck phone.
+description=Powered offline screensaver, weather Wi-Fi and unplugged deep sleep profile for EndoDeck.

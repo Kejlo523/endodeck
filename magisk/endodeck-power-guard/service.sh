@@ -27,14 +27,33 @@ log_line() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"
 }
 
-radios_off() {
+base_radios_off() {
     settings put global airplane_mode_on 1
     am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null 2>&1
     svc data disable >/dev/null 2>&1
-    svc wifi disable >/dev/null 2>&1
-    settings put global wifi_on 0
     settings put global bluetooth_on 0
     settings put secure location_mode 0
+}
+
+radios_off() {
+    base_radios_off
+    svc wifi disable >/dev/null 2>&1
+    settings put global wifi_on 0
+}
+
+deck_radios() {
+    base_radios_off
+    if [ "$KEEP_WIFI_FOR_WEATHER" = "1" ]; then
+        svc wifi enable >/dev/null 2>&1
+        settings put global wifi_on 1
+    else
+        svc wifi disable >/dev/null 2>&1
+        settings put global wifi_on 0
+    fi
+}
+
+has_external_power() {
+    dumpsys battery 2>/dev/null | grep -qE '(AC|USB|Wireless) powered: true'
 }
 
 wake_deck() {
@@ -45,6 +64,16 @@ wake_deck() {
     wm dismiss-keyguard >/dev/null 2>&1
     am start -n "$DECK_COMPONENT" >/dev/null 2>&1
     log_line "PC host connected; deck awake"
+}
+
+wake_offline_saver() {
+    dumpsys deviceidle unforce >/dev/null 2>&1
+    settings put global stay_on_while_plugged_in 3
+    settings put system screen_off_timeout 1800000
+    input keyevent 224
+    wm dismiss-keyguard >/dev/null 2>&1
+    am start -n "$DECK_COMPONENT" >/dev/null 2>&1
+    log_line "PC host unavailable; powered offline screensaver active"
 }
 
 sleep_deck() {
@@ -60,7 +89,7 @@ while [ "$(getprop sys.boot_completed)" != "1" ]; do
     sleep 2
 done
 
-radios_off
+deck_radios
 last_state=unknown
 disconnected_at=0
 sleep_applied=0
@@ -72,9 +101,17 @@ while true; do
         disconnected_at=0
         sleep_applied=0
         if [ "$last_state" != "connected" ]; then
-            if [ "$KEEP_AIRPLANE_CONNECTED" = "1" ]; then radios_off; fi
+            if [ "$KEEP_AIRPLANE_CONNECTED" = "1" ]; then deck_radios; fi
             wake_deck
             last_state=connected
+        fi
+    elif [ "$POWERED_OFFLINE_SCREENSAVER" = "1" ] && has_external_power; then
+        disconnected_at=0
+        sleep_applied=0
+        if [ "$last_state" != "powered-offline" ]; then
+            deck_radios
+            wake_offline_saver
+            last_state=powered-offline
         fi
     else
         if [ "$last_state" != "disconnected" ]; then

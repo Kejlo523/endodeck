@@ -3,8 +3,8 @@
   "title": "ENDO DECK",
   "accent": "#a358fe",
   "ui": {
-    "dimAfterSeconds": 90,
-    "screensaverAfterSeconds": 300
+    "dimAfterSeconds": 60,
+    "screensaverAfterSeconds": 180
   },
   "weather": {
     "city": "Szczecin",
