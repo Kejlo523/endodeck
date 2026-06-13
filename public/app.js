@@ -11,15 +11,23 @@ const editLabel = document.querySelector("#edit-label");
 const editHint = document.querySelector("#edit-hint");
 const editIcon = document.querySelector("#edit-icon");
 const editTone = document.querySelector("#edit-tone");
+const editAccent = document.querySelector("#edit-accent");
 const editType = document.querySelector("#edit-type");
 const editPrimary = document.querySelector("#edit-primary");
 const editDetail = document.querySelector("#edit-detail");
 const editPrimaryLabel = document.querySelector("#edit-primary-label");
 const editDetailLabel = document.querySelector("#edit-detail-label");
+const powerStatus = document.querySelector("#power-status");
+const batteryStatus = document.querySelector("#battery-status");
+const screensaver = document.querySelector("#screensaver");
 let config;
 let currentPage = "home";
 let toastTimer;
 let audioRefreshTimer;
+let inactivityTimer;
+let screensaverTimer;
+let latestState = {};
+let latestWeather = null;
 
 const icons = {
   code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/>',
@@ -207,6 +215,7 @@ function fillButtonOptions() {
 function updateActionLabels() {
   const labels = {
     hotkey: ["Klawisze, np. CTRL + SHIFT + P", "Nie używane"],
+    processHotkey: ["Proces, np. Discord", "Klawisze, np. CTRL + SHIFT + M"],
     launch: ["Program lub adres", "Argumenty jako JSON, np. [\"--new-window\"]"],
     command: ["Polecenie", "Argumenty jako JSON"],
     media: ["playPause / next / previous / volumeUp…", "Nie używane"],
@@ -228,10 +237,12 @@ function loadEditor() {
   editType.value = button.action.type;
   const action = button.action;
   editPrimary.value = action.type === "hotkey" ? (action.keys ?? []).join(" + ")
+    : action.type === "processHotkey" ? action.process ?? ""
     : action.type === "media" ? action.key ?? ""
     : action.type === "page" ? action.page ?? ""
     : action.command ?? "";
-  editDetail.value = action.type === "sequence" ? JSON.stringify(action.actions ?? [], null, 2)
+  editDetail.value = action.type === "processHotkey" ? (action.keys ?? []).join(" + ")
+    : action.type === "sequence" ? JSON.stringify(action.actions ?? [], null, 2)
     : ["launch", "command"].includes(action.type) ? JSON.stringify(action.args ?? []) : "";
   updateActionLabels();
 }
@@ -239,6 +250,7 @@ function loadEditor() {
 function buildAction() {
   const type = editType.value;
   if (type === "hotkey") return { type, keys: editPrimary.value.split(/[+,\s]+/).filter(Boolean).map((key) => key.toUpperCase()) };
+  if (type === "processHotkey") return { type, process: editPrimary.value.trim(), keys: editDetail.value.split(/[+,\s]+/).filter(Boolean).map((key) => key.toUpperCase()) };
   if (type === "media") return { type, key: editPrimary.value.trim() };
   if (type === "page") return { type, page: editPrimary.value.trim() };
   if (type === "sequence") return { type, actions: JSON.parse(editDetail.value || "[]") };
@@ -249,6 +261,7 @@ function openSettings() {
   editPage.replaceChildren(...Object.entries(config.pages).map(([name, page]) => new Option(page.label, name)));
   editPage.value = currentPage;
   editIcon.replaceChildren(...Object.keys(icons).map((name) => new Option(name, name)));
+  editAccent.value = config.accent;
   fillButtonOptions();
   settingsPanel.classList.remove("hidden");
   settingsPanel.setAttribute("aria-hidden", "false");
@@ -268,10 +281,12 @@ settingsForm.addEventListener("submit", async (event) => {
     button.icon = editIcon.value;
     button.tone = editTone.value;
     button.action = buildAction();
+    config.accent = editAccent.value;
     const response = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(config) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Nie udało się zapisać");
     config = result.config;
+    document.documentElement.style.setProperty("--accent", config.accent);
     render(currentPage);
     fillButtonOptions();
     showToast("Zapisano przycisk");
@@ -287,12 +302,77 @@ editButton.addEventListener("change", loadEditor);
 editType.addEventListener("change", updateActionLabels);
 
 function updateState(state) {
+  latestState = state;
   usbStatus.classList.toggle("online", Boolean(state.adb));
+  document.querySelector("#saver-pc").classList.toggle("online", Boolean(state.adb));
+  const battery = state.battery;
+  powerStatus.textContent = battery ? `${battery.currentMa >= 0 ? "+" : ""}${battery.currentMa} mA` : "-- mA";
+  batteryStatus.textContent = battery ? `${battery.percent}%` : "--%";
+  document.querySelector("#saver-power").textContent = powerStatus.textContent;
+  document.querySelector("#saver-battery").textContent = batteryStatus.textContent;
   if (state.error) showToast(state.error, true);
 }
 
 function updateClock() {
-  document.querySelector("#clock").textContent = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(new Date());
+  const now = new Date();
+  const time = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit" }).format(now);
+  document.querySelector("#clock").textContent = time;
+  document.querySelector("#saver-clock").textContent = time;
+  document.querySelector("#saver-date").textContent = new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long" }).format(now);
+}
+
+const weatherLabels = {
+  0: ["SŁONECZNIE", "☀"], 1: ["PRAWIE BEZCHMURNIE", "◒"], 2: ["CZĘŚCIOWE ZACHMURZENIE", "◑"], 3: ["POCHMURNO", "☁"],
+  45: ["MGŁA", "≋"], 48: ["MGŁA", "≋"], 51: ["MŻAWKA", "⋰"], 53: ["MŻAWKA", "⋰"], 55: ["MŻAWKA", "⋰"],
+  61: ["DESZCZ", "↯"], 63: ["DESZCZ", "↯"], 65: ["ULEWA", "↯"], 71: ["ŚNIEG", "✳"], 73: ["ŚNIEG", "✳"], 75: ["ŚNIEG", "✳"],
+  80: ["PRZELOTNY DESZCZ", "↯"], 81: ["PRZELOTNY DESZCZ", "↯"], 82: ["ULEWA", "↯"], 95: ["BURZA", "ϟ"], 96: ["BURZA", "ϟ"], 99: ["BURZA", "ϟ"]
+};
+
+function weatherInfo(code) {
+  return weatherLabels[code] ?? ["ZMIENNA POGODA", "·"];
+}
+
+function renderWeather(weather) {
+  latestWeather = weather;
+  const [description, symbol] = weatherInfo(weather.current.code);
+  document.querySelector("#weather-symbol").textContent = symbol;
+  document.querySelector("#weather-temp").textContent = `${weather.current.temperature}°`;
+  document.querySelector("#weather-city").textContent = weather.city;
+  document.querySelector("#weather-description").textContent = `${description} · ODCZUWALNA ${weather.current.apparent}° · WIATR ${weather.current.wind} KM/H`;
+  const dayFormat = new Intl.DateTimeFormat("pl-PL", { weekday: "short" });
+  document.querySelector("#forecast").replaceChildren(...weather.daily.map((day) => {
+    const item = document.createElement("div");
+    item.className = "forecast-day";
+    item.innerHTML = `<b>${dayFormat.format(new Date(`${day.date}T12:00:00`)).replace(".", "")}</b><span>${weatherInfo(day.code)[1]}</span><strong>${day.max}°</strong><small>${day.min}° · ${day.rain}%</small>`;
+    return item;
+  }));
+}
+
+async function loadWeather() {
+  try {
+    const response = await fetch("/api/weather", { cache: "no-store" });
+    if (!response.ok) throw new Error();
+    renderWeather(await response.json());
+  } catch {
+    document.querySelector("#weather-description").textContent = "POGODA NIEDOSTĘPNA";
+  }
+}
+
+function showScreensaver() {
+  document.body.classList.remove("dimmed");
+  screensaver.classList.remove("hidden");
+  screensaver.setAttribute("aria-hidden", "false");
+  if (!latestWeather) loadWeather();
+}
+
+function resetIdle() {
+  document.body.classList.remove("dimmed");
+  screensaver.classList.add("hidden");
+  screensaver.setAttribute("aria-hidden", "true");
+  clearTimeout(inactivityTimer);
+  clearTimeout(screensaverTimer);
+  inactivityTimer = setTimeout(() => document.body.classList.add("dimmed"), (config.ui?.dimAfterSeconds ?? 90) * 1000);
+  screensaverTimer = setTimeout(showScreensaver, (config.ui?.screensaverAfterSeconds ?? 300) * 1000);
 }
 
 async function boot() {
@@ -303,6 +383,10 @@ async function boot() {
   new EventSource("/api/events").addEventListener("message", (event) => updateState(JSON.parse(event.data)));
   updateClock();
   setInterval(updateClock, 10_000);
+  loadWeather();
+  setInterval(loadWeather, 15 * 60_000);
+  for (const eventName of ["pointerdown", "touchstart", "keydown"]) document.addEventListener(eventName, resetIdle, { passive: true });
+  resetIdle();
 }
 
 boot().catch(() => {

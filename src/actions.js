@@ -50,6 +50,15 @@ async function pressVirtualKeys(keys) {
   await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 5000 });
 }
 
+async function pressProcessHotkey(processName, keys) {
+  const codes = keys.map(keyCode);
+  const down = codes.map((code) => `[DeckTarget]::keybd_event(${code},0,0,[UIntPtr]::Zero)`).join(";");
+  const up = [...codes].reverse().map((code) => `[DeckTarget]::keybd_event(${code},0,2,[UIntPtr]::Zero)`).join(";");
+  const safeName = String(processName).replace(/'/g, "''");
+  const script = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class DeckTarget { [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int cmd); [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr extra); }';$previous=[DeckTarget]::GetForegroundWindow();$target=Get-Process -Name '${safeName}' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1;if(-not $target){throw 'Aplikacja ${safeName} nie jest uruchomiona'};[DeckTarget]::ShowWindowAsync($target.MainWindowHandle,9)|Out-Null;[DeckTarget]::SetForegroundWindow($target.MainWindowHandle)|Out-Null;Start-Sleep -Milliseconds 90;${down};Start-Sleep -Milliseconds 50;${up};Start-Sleep -Milliseconds 80;if($previous -ne [IntPtr]::Zero){[DeckTarget]::SetForegroundWindow($previous)|Out-Null}`;
+  await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 6000 });
+}
+
 async function pressMediaKey(name) {
   const code = virtualKeys[name];
   if (!code) throw new Error(`Nieobsługiwany klawisz multimedialny: ${name}`);
@@ -66,6 +75,9 @@ export async function executeAction(action, context) {
       return {};
     case "hotkey":
       await pressVirtualKeys(action.keys ?? []);
+      return {};
+    case "processHotkey":
+      await pressProcessHotkey(action.process, action.keys ?? []);
       return {};
     case "launch": {
       const child = spawn(action.command, action.args ?? [], { detached: true, stdio: "ignore", windowsHide: false });

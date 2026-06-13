@@ -1,0 +1,6 @@
+id=endodeck_touch_wake
+name=EndoDeck Touch Wake
+version=1.0.0
+versionCode=100
+author=Kejlo523 / Codex
+description=Hardware double-tap wake and keyguard bypass for Huawei P8 Lite ALE-L21.

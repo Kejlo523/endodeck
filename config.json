@@ -2,55 +2,431 @@
   "port": 8765,
   "title": "ENDO DECK",
   "accent": "#b7f34a",
+  "ui": {
+    "dimAfterSeconds": 90,
+    "screensaverAfterSeconds": 300
+  },
+  "weather": {
+    "city": "Warszawa",
+    "latitude": 52.2297,
+    "longitude": 21.0122
+  },
   "pages": {
     "home": {
       "label": "Codzienny",
       "buttons": [
-        { "id": "discord", "label": "DISCORD", "hint": "Uruchom", "icon": "discord", "tone": "violet", "action": { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Local\\Discord\\Update.exe", "args": ["--processStart", "Discord.exe"] } },
-        { "id": "discord-mute", "label": "MIKROFON", "hint": "Discord · Ctrl Shift M", "icon": "micOff", "tone": "red", "action": { "type": "hotkey", "keys": ["CTRL", "SHIFT", "M"] } },
-        { "id": "discord-deafen", "label": "WYCISZENIE", "hint": "Discord · Ctrl Shift D", "icon": "headset", "tone": "red", "action": { "type": "hotkey", "keys": ["CTRL", "SHIFT", "D"] } },
-        { "id": "spotify", "label": "SPOTIFY", "hint": "Uruchom", "icon": "spotify", "tone": "green", "action": { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Roaming\\Spotify\\Spotify.exe" } },
-        { "id": "vol-down-home", "label": "CISZEJ", "hint": "Windows", "icon": "volumeDown", "tone": "blue", "action": { "type": "media", "key": "volumeDown" } },
-        { "id": "vol-up-home", "label": "GŁOŚNIEJ", "hint": "Windows", "icon": "volumeUp", "tone": "blue", "action": { "type": "media", "key": "volumeUp" } },
-        { "id": "media-play-home", "label": "PLAY / PAUZA", "hint": "Media", "icon": "play", "tone": "green", "action": { "type": "media", "key": "playPause" } },
-        { "id": "media-next-home", "label": "SKIP", "hint": "Następny utwór", "icon": "next", "tone": "green", "action": { "type": "media", "key": "next" } },
-        { "id": "terminal", "label": "TERMINAL", "hint": "Windows Terminal", "icon": "terminal", "tone": "neutral", "action": { "type": "launch", "command": "wt.exe" } },
-        { "id": "explorer", "label": "PLIKI", "hint": "Explorer", "icon": "folder", "tone": "neutral", "action": { "type": "launch", "command": "explorer.exe" } },
-        { "id": "screenshot", "label": "WYCINEK", "hint": "Win Shift S", "icon": "crop", "tone": "amber", "action": { "type": "hotkey", "keys": ["WIN", "SHIFT", "S"] } },
-        { "id": "audio-page-home", "label": "MIKSER", "hint": "Aplikacje i system", "icon": "sliders", "tone": "accent", "action": { "type": "page", "page": "audio" } }
+        {
+          "id": "discord",
+          "label": "DISCORD",
+          "hint": "Uruchom",
+          "icon": "discord",
+          "tone": "violet",
+          "action": {
+            "type": "launch",
+            "command": "C:\\Users\\Kejlo\\AppData\\Local\\Discord\\Update.exe",
+            "args": [
+              "--processStart",
+              "Discord.exe"
+            ]
+          }
+        },
+        {
+          "id": "discord-mute",
+          "label": "MIKROFON",
+          "hint": "Discord · globalnie",
+          "icon": "micOff",
+          "tone": "red",
+          "action": {
+            "type": "processHotkey",
+            "process": "Discord",
+            "keys": [
+              "CTRL",
+              "SHIFT",
+              "M"
+            ]
+          }
+        },
+        {
+          "id": "discord-deafen",
+          "label": "WYCISZENIE",
+          "hint": "Discord · globalnie",
+          "icon": "headset",
+          "tone": "red",
+          "action": {
+            "type": "processHotkey",
+            "process": "Discord",
+            "keys": [
+              "CTRL",
+              "SHIFT",
+              "D"
+            ]
+          }
+        },
+        {
+          "id": "spotify",
+          "label": "SPOTIFY",
+          "hint": "Uruchom",
+          "icon": "spotify",
+          "tone": "green",
+          "action": {
+            "type": "launch",
+            "command": "C:\\Users\\Kejlo\\AppData\\Roaming\\Spotify\\Spotify.exe"
+          }
+        },
+        {
+          "id": "vol-down-home",
+          "label": "CISZEJ",
+          "hint": "Windows",
+          "icon": "volumeDown",
+          "tone": "blue",
+          "action": {
+            "type": "media",
+            "key": "volumeDown"
+          }
+        },
+        {
+          "id": "vol-up-home",
+          "label": "GŁOŚNIEJ",
+          "hint": "Windows",
+          "icon": "volumeUp",
+          "tone": "blue",
+          "action": {
+            "type": "media",
+            "key": "volumeUp"
+          }
+        },
+        {
+          "id": "media-play-home",
+          "label": "PLAY / PAUZA",
+          "hint": "Media",
+          "icon": "play",
+          "tone": "green",
+          "action": {
+            "type": "media",
+            "key": "playPause"
+          }
+        },
+        {
+          "id": "media-next-home",
+          "label": "SKIP",
+          "hint": "Następny utwór",
+          "icon": "next",
+          "tone": "green",
+          "action": {
+            "type": "media",
+            "key": "next"
+          }
+        },
+        {
+          "id": "terminal",
+          "label": "TERMINAL",
+          "hint": "Windows Terminal",
+          "icon": "terminal",
+          "tone": "neutral",
+          "action": {
+            "type": "launch",
+            "command": "wt.exe"
+          }
+        },
+        {
+          "id": "explorer",
+          "label": "PLIKI",
+          "hint": "Explorer",
+          "icon": "folder",
+          "tone": "neutral",
+          "action": {
+            "type": "launch",
+            "command": "explorer.exe"
+          }
+        },
+        {
+          "id": "screenshot",
+          "label": "WYCINEK",
+          "hint": "Win Shift S",
+          "icon": "crop",
+          "tone": "amber",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "WIN",
+              "SHIFT",
+              "S"
+            ]
+          }
+        },
+        {
+          "id": "audio-page-home",
+          "label": "MIKSER",
+          "hint": "Aplikacje i system",
+          "icon": "sliders",
+          "tone": "accent",
+          "action": {
+            "type": "page",
+            "page": "audio"
+          }
+        }
       ]
     },
     "automation": {
       "label": "Automatyzacja",
       "buttons": [
-        { "id": "start-work", "label": "START PRACY", "hint": "Code · Terminal · Discord", "icon": "rocket", "tone": "accent", "action": { "type": "sequence", "actions": [
-          { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe", "args": ["C:\\Users\\Kejlo\\Desktop\\download"] },
-          { "type": "launch", "command": "wt.exe", "args": ["-d", "C:\\Users\\Kejlo\\Desktop\\download"] },
-          { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Local\\Discord\\Update.exe", "args": ["--processStart", "Discord.exe"] }
-        ] } },
-        { "id": "endodeck-project", "label": "ENDO DECK", "hint": "Otwórz projekt", "icon": "code", "tone": "green", "action": { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe", "args": ["C:\\Users\\Kejlo\\Desktop\\download\\endodeck"] } },
-        { "id": "task-manager", "label": "PROCESY", "hint": "Ctrl Shift Esc", "icon": "activity", "tone": "amber", "action": { "type": "hotkey", "keys": ["CTRL", "SHIFT", "ESC"] } },
-        { "id": "devtools", "label": "DEVTOOLS", "hint": "F12", "icon": "inspect", "tone": "blue", "action": { "type": "hotkey", "keys": ["F12"] } },
-        { "id": "desktop", "label": "PULPIT", "hint": "Win D", "icon": "display", "tone": "neutral", "action": { "type": "hotkey", "keys": ["WIN", "D"] } },
-        { "id": "discord-camera", "label": "KAMERA", "hint": "Discord · Ctrl Shift V", "icon": "video", "tone": "red", "action": { "type": "hotkey", "keys": ["CTRL", "SHIFT", "V"] } },
-        { "id": "copy", "label": "KOPIUJ", "hint": "Ctrl C", "icon": "copy", "tone": "neutral", "action": { "type": "hotkey", "keys": ["CTRL", "C"] } },
-        { "id": "paste", "label": "WKLEJ", "hint": "Ctrl V", "icon": "paste", "tone": "neutral", "action": { "type": "hotkey", "keys": ["CTRL", "V"] } },
-        { "id": "undo", "label": "COFNIJ", "hint": "Ctrl Z", "icon": "undo", "tone": "amber", "action": { "type": "hotkey", "keys": ["CTRL", "Z"] } },
-        { "id": "redo", "label": "PONÓW", "hint": "Ctrl Y", "icon": "redo", "tone": "green", "action": { "type": "hotkey", "keys": ["CTRL", "Y"] } },
-        { "id": "audio-page", "label": "MIKSER", "hint": "Aplikacje i system", "icon": "sliders", "tone": "blue", "action": { "type": "page", "page": "audio" } },
-        { "id": "home-page", "label": "WRÓĆ", "hint": "Codzienny", "icon": "back", "tone": "accent", "action": { "type": "page", "page": "home" } }
+        {
+          "id": "start-work",
+          "label": "START PRACY",
+          "hint": "Code · Terminal · Discord",
+          "icon": "rocket",
+          "tone": "accent",
+          "action": {
+            "type": "sequence",
+            "actions": [
+              {
+                "type": "launch",
+                "command": "C:\\Users\\Kejlo\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+                "args": [
+                  "C:\\Users\\Kejlo\\Desktop\\download"
+                ]
+              },
+              {
+                "type": "launch",
+                "command": "wt.exe",
+                "args": [
+                  "-d",
+                  "C:\\Users\\Kejlo\\Desktop\\download"
+                ]
+              },
+              {
+                "type": "launch",
+                "command": "C:\\Users\\Kejlo\\AppData\\Local\\Discord\\Update.exe",
+                "args": [
+                  "--processStart",
+                  "Discord.exe"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "endodeck-project",
+          "label": "ENDO DECK",
+          "hint": "Otwórz projekt",
+          "icon": "code",
+          "tone": "green",
+          "action": {
+            "type": "launch",
+            "command": "C:\\Users\\Kejlo\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+            "args": [
+              "C:\\Users\\Kejlo\\Desktop\\download\\endodeck"
+            ]
+          }
+        },
+        {
+          "id": "task-manager",
+          "label": "PROCESY",
+          "hint": "Ctrl Shift Esc",
+          "icon": "activity",
+          "tone": "amber",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "CTRL",
+              "SHIFT",
+              "ESC"
+            ]
+          }
+        },
+        {
+          "id": "devtools",
+          "label": "DEVTOOLS",
+          "hint": "F12",
+          "icon": "inspect",
+          "tone": "blue",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "F12"
+            ]
+          }
+        },
+        {
+          "id": "desktop",
+          "label": "PULPIT",
+          "hint": "Win D",
+          "icon": "display",
+          "tone": "neutral",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "WIN",
+              "D"
+            ]
+          }
+        },
+        {
+          "id": "discord-camera",
+          "label": "KAMERA",
+          "hint": "Discord · globalnie",
+          "icon": "video",
+          "tone": "red",
+          "action": {
+            "type": "processHotkey",
+            "process": "Discord",
+            "keys": [
+              "CTRL",
+              "SHIFT",
+              "V"
+            ]
+          }
+        },
+        {
+          "id": "copy",
+          "label": "KOPIUJ",
+          "hint": "Ctrl C",
+          "icon": "copy",
+          "tone": "neutral",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "CTRL",
+              "C"
+            ]
+          }
+        },
+        {
+          "id": "paste",
+          "label": "WKLEJ",
+          "hint": "Ctrl V",
+          "icon": "paste",
+          "tone": "neutral",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "CTRL",
+              "V"
+            ]
+          }
+        },
+        {
+          "id": "undo",
+          "label": "COFNIJ",
+          "hint": "Ctrl Z",
+          "icon": "undo",
+          "tone": "amber",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "CTRL",
+              "Z"
+            ]
+          }
+        },
+        {
+          "id": "redo",
+          "label": "PONÓW",
+          "hint": "Ctrl Y",
+          "icon": "redo",
+          "tone": "green",
+          "action": {
+            "type": "hotkey",
+            "keys": [
+              "CTRL",
+              "Y"
+            ]
+          }
+        },
+        {
+          "id": "audio-page",
+          "label": "MIKSER",
+          "hint": "Aplikacje i system",
+          "icon": "sliders",
+          "tone": "blue",
+          "action": {
+            "type": "page",
+            "page": "audio"
+          }
+        },
+        {
+          "id": "home-page",
+          "label": "WRÓĆ",
+          "hint": "Codzienny",
+          "icon": "back",
+          "tone": "accent",
+          "action": {
+            "type": "page",
+            "page": "home"
+          }
+        }
       ]
     },
     "audio": {
       "label": "Mikser audio",
       "layout": "mixer",
       "buttons": [
-        { "id": "media-prev", "label": "POPRZEDNI", "hint": "Media", "icon": "previous", "tone": "green", "action": { "type": "media", "key": "previous" } },
-        { "id": "media-play", "label": "PLAY / PAUZA", "hint": "Media", "icon": "play", "tone": "green", "action": { "type": "media", "key": "playPause" } },
-        { "id": "media-next", "label": "NASTĘPNY", "hint": "Media", "icon": "next", "tone": "green", "action": { "type": "media", "key": "next" } },
-        { "id": "spotify-audio", "label": "SPOTIFY", "hint": "Uruchom", "icon": "spotify", "tone": "green", "action": { "type": "launch", "command": "C:\\Users\\Kejlo\\AppData\\Roaming\\Spotify\\Spotify.exe" } },
-        { "id": "automation-page-audio", "label": "AUTOMATY", "hint": "Makra i system", "icon": "automation", "tone": "blue", "action": { "type": "page", "page": "automation" } },
-        { "id": "home-page-2", "label": "WRÓĆ", "hint": "Codzienny", "icon": "back", "tone": "accent", "action": { "type": "page", "page": "home" } }
+        {
+          "id": "media-prev",
+          "label": "POPRZEDNI",
+          "hint": "Media",
+          "icon": "previous",
+          "tone": "green",
+          "action": {
+            "type": "media",
+            "key": "previous"
+          }
+        },
+        {
+          "id": "media-play",
+          "label": "PLAY / PAUZA",
+          "hint": "Media",
+          "icon": "play",
+          "tone": "green",
+          "action": {
+            "type": "media",
+            "key": "playPause"
+          }
+        },
+        {
+          "id": "media-next",
+          "label": "NASTĘPNY",
+          "hint": "Media",
+          "icon": "next",
+          "tone": "green",
+          "action": {
+            "type": "media",
+            "key": "next"
+          }
+        },
+        {
+          "id": "spotify-audio",
+          "label": "SPOTIFY",
+          "hint": "Uruchom",
+          "icon": "spotify",
+          "tone": "green",
+          "action": {
+            "type": "launch",
+            "command": "C:\\Users\\Kejlo\\AppData\\Roaming\\Spotify\\Spotify.exe"
+          }
+        },
+        {
+          "id": "automation-page-audio",
+          "label": "AUTOMATY",
+          "hint": "Makra i system",
+          "icon": "automation",
+          "tone": "blue",
+          "action": {
+            "type": "page",
+            "page": "automation"
+          }
+        },
+        {
+          "id": "home-page-2",
+          "label": "WRÓĆ",
+          "hint": "Codzienny",
+          "icon": "back",
+          "tone": "accent",
+          "action": {
+            "type": "page",
+            "page": "home"
+          }
+        }
       ]
     }
   }

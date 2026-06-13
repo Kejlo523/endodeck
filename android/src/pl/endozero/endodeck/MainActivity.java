@@ -13,13 +13,48 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public final class MainActivity extends Activity {
     private static final String DECK_URL = "http://127.0.0.1:8765/";
+    private static final String OFFLINE_URL = "file:///android_asset/offline.html";
     private final Handler handler = new Handler();
     private WebView webView;
-    private boolean loaded;
-    private boolean loadFailed;
+    private boolean deckVisible;
+    private boolean destroyed;
+
+    private final Runnable connectionProbe = new Runnable() {
+        @Override
+        public void run() {
+            new Thread(() -> {
+                boolean available = false;
+                HttpURLConnection connection = null;
+                try {
+                    connection = (HttpURLConnection) new URL(DECK_URL + "api/state").openConnection();
+                    connection.setConnectTimeout(650);
+                    connection.setReadTimeout(650);
+                    connection.setUseCaches(false);
+                    available = connection.getResponseCode() == 200;
+                } catch (Exception ignored) {
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+
+                final boolean serverAvailable = available;
+                handler.post(() -> {
+                    if (destroyed || isFinishing()) return;
+                    if (serverAvailable && !deckVisible) {
+                        webView.loadUrl(DECK_URL);
+                    } else if (!serverAvailable && deckVisible) {
+                        deckVisible = false;
+                        webView.loadUrl(OFFLINE_URL);
+                    }
+                    handler.postDelayed(connectionProbe, serverAvailable ? 3000 : 1200);
+                });
+            }).start();
+        }
+    };
 
     @Override
     @SuppressLint("SetJavaScriptEnabled")
@@ -31,7 +66,7 @@ public final class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.BLACK);
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.rgb(9, 10, 9));
+        webView.setBackgroundColor(Color.rgb(7, 9, 7));
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -42,46 +77,32 @@ public final class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                loadFailed = false;
-                loaded = false;
-            }
-
-            @Override
             public void onPageFinished(WebView view, String url) {
-                if (!loadFailed && url.startsWith(DECK_URL)) {
-                    loaded = true;
-                    handler.removeCallbacksAndMessages(null);
-                }
+                deckVisible = url != null && url.startsWith(DECK_URL);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) {
-                    loadFailed = true;
-                    scheduleReload();
-                }
+                if (request.isForMainFrame()) showOffline();
             }
 
             @Override
             @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                loadFailed = true;
-                scheduleReload();
+                if (failingUrl != null && failingUrl.startsWith(DECK_URL)) showOffline();
             }
         });
 
         setContentView(webView);
         enterImmersiveMode();
-        webView.loadUrl(DECK_URL);
+        webView.loadUrl(OFFLINE_URL);
+        handler.post(connectionProbe);
     }
 
-    private void scheduleReload() {
-        loaded = false;
-        handler.removeCallbacksAndMessages(null);
-        handler.postDelayed(() -> {
-            if (!isFinishing() && !loaded) webView.loadUrl(DECK_URL);
-        }, 1500);
+    private void showOffline() {
+        if (!deckVisible && OFFLINE_URL.equals(webView.getUrl())) return;
+        deckVisible = false;
+        webView.loadUrl(OFFLINE_URL);
     }
 
     private void enterImmersiveMode() {
@@ -103,6 +124,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
         handler.removeCallbacksAndMessages(null);
         if (webView != null) webView.destroy();
         super.onDestroy();

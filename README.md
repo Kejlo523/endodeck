@@ -1,16 +1,34 @@
 # EndoDeck
 
-Lokalny panel makr dla telefonu z Androidem, komunikujący się z Windows wyłącznie przez USB i `adb reverse`.
+Lokalny Stream Deck z telefonu Huawei P8 Lite, sterowany przez USB i `adb reverse`. Telefon nie potrzebuje Wi-Fi ani usług Google, a wszystkie akcje wykonuje serwer na Windows.
 
-## Start
+## Najważniejsze funkcje
+
+- 12 dużych kafelków w układzie dopasowanym do ekranu 1280 x 720
+- globalne skróty Discorda działające także wtedy, gdy Discord nie jest aktywnym oknem
+- multimedia, programy, skróty Windows, sekwencje akcji i mikser głośności aplikacji
+- Studio PC do edycji kafelków, kolejności, ikon, kolorów i akcji
+- regulowany kolor akcentu, przyciemnienie i wygaszacz z pogodą na siedem dni
+- pasek stanu z połączeniem USB, prądem baterii i poziomem naładowania
+- lokalny ekran `PODŁĄCZ KOMPUTER`, gdy serwer lub przewód USB jest niedostępny
+- moduły Magisk do uśpienia po odłączeniu, wyłączenia radia, DT2W i usunięcia blokady
+- dwuczęściowa obudowa P8 Lite gotowa do druku 3D
+
+## Uruchomienie
 
 ```powershell
 .\scripts\start-endodeck.ps1
 ```
 
-Serwer automatycznie wykrywa telefon, tworzy tunel `tcp:8765` i uruchamia aplikację kioskową. Układ oraz akcje edytuje się w `config.json`; zmiany są odczytywane bez restartu serwera po następnym żądaniu.
+Studio konfiguracji:
 
-Jednorazowa instalacja aplikacji na podłączonym telefonie:
+```powershell
+.\scripts\open-editor.ps1
+```
+
+Można je również otworzyć pod adresem `http://127.0.0.1:8765/editor.html`.
+
+Instalacja lub aktualizacja aplikacji na telefonie:
 
 ```powershell
 .\scripts\build-android.ps1
@@ -23,30 +41,34 @@ Automatyczny start razem z Windows:
 .\scripts\install-autostart.ps1
 ```
 
-## Obsługiwane akcje
+## Magisk
 
-- `hotkey`: kombinacja klawiszy Windows, np. `["CTRL", "SHIFT", "M"]`
-- `media`: `playPause`, `next`, `previous`, `volumeUp`, `volumeDown`, `volumeMute`
-- `launch`: uruchomienie programu
-- `command`: uruchomienie programu z argumentami i oczekiwanie na wynik
-- `sequence`: wykonanie kilku akcji po kolei, np. otwarcie edytora, terminala i Discorda
-- `page`: przejście do innej strony przycisków
+Gotowe paczki znajdują się w `dist`:
 
-Komendy są lokalne i pochodzą wyłącznie z pliku `config.json` na komputerze.
+- `EndoDeck-Power-Guard-Magisk.zip` monitoruje hosta USB, wyłącza Wi-Fi, Bluetooth, dane, lokalizację i modem przez tryb samolotowy, a po 45 sekundach od odłączenia wygasza ekran i wymusza deep idle.
+- `EndoDeck-Touch-Wake-Magisk.zip` włącza sprzętowe double-tap-to-wake Huawei i wyłącza ekran blokady.
 
-Mała zębatka w prawym górnym rogu otwiera edytor. Pozwala zmieniać nazwę, opis, ikonę, kolor i akcję każdego przycisku bez ręcznego edytowania JSON-a.
+Instalacja obu paczek przez ADB i Magisk:
 
-## Mikser audio
+```powershell
+.\scripts\install-magisk.ps1
+```
 
-Przycisk `MIKSER` otwiera sterowanie Windows Core Audio. Górny suwak zmienia głośność całego systemu, a niżej pojawiają się osobne suwaki dla aplikacji mających aktywną sesję dźwiękową, np. Discorda, Spotify, przeglądarki lub gry. Lista odświeża się automatycznie co kilka sekund.
+Po instalacji wymagany jest restart telefonu. Czas do uśpienia i zachowanie trybu samolotowego można zmienić w `magisk/endodeck-power-guard/config.conf`, a następnie ponownie zbudować i zainstalować moduł.
 
-Aplikacja pojawi się w mikserze po uruchomieniu odtwarzania albo wygenerowaniu przez nią dźwięku. Zmiana poziomu jest wykonywana lokalnie na komputerze i nie wymaga dodatkowego sterownika audio.
+## Akcje i dźwięk
+
+Obsługiwane typy akcji to `hotkey`, `processHotkey`, `media`, `launch`, `command`, `sequence` i `page`. `processHotkey` na chwilę aktywuje wskazany proces, wysyła skrót i przywraca poprzednie okno, dzięki czemu mute, deafen i kamera Discorda działają globalnie.
+
+Mikser używa Windows Core Audio. Pokazuje poziom systemowy oraz aplikacje mające aktywną sesję dźwięku. Aplikacja pojawi się po rozpoczęciu odtwarzania lub wygenerowaniu dźwięku.
+
+Wartość mA pochodzi z czujnika baterii telefonu. Jest najlepszym dostępnym przybliżeniem bilansu energii, ale P8 Lite nie udostępnia osobnego czujnika prądu wejściowego USB.
 
 ## Obudowa 3D
 
-Gotowe modele są w katalogu `dist`:
+Modele w `dist`:
 
-- `EndoDeck-P8Lite-Front-Bezel.stl` – przednia maskownica pokazująca tylko ekran
-- `EndoDeck-P8Lite-Rear-Stand.stl` – tylna pokrywa, wentylacja i nogi biurkowe
+- `EndoDeck-P8Lite-Front-Bezel.stl`
+- `EndoDeck-P8Lite-Rear-Stand.stl`
 
-Telefon jest zamknięty i dociskany pomiędzy częściami skręconymi czterema śrubami M3 × 10 mm. Parametry modelu, piankę dociskową i ustawienia druku opisuje `enclosure/README.md`.
+Telefon jest dociskany między częściami skręcanymi czterema śrubami M3 x 10 mm. Szczegóły wymiarów, pianki i ustawień druku znajdują się w `enclosure/README.md`.

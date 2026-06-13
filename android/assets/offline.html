@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    :root { color-scheme: dark; font-family: sans-serif; background: #070907; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { display: grid; place-items: center; color: #f2f5ed; background: #070907; }
+    .shell { width: min(720px, 82vw); display: grid; justify-items: center; gap: 18px; text-align: center; }
+    .cable { width: 82px; height: 82px; color: #b7f34a; animation: breathe 1.8s ease-in-out infinite; }
+    svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    h1 { margin: 0; font-size: 26px; letter-spacing: .12em; font-weight: 600; }
+    p { margin: 0; color: #858b80; font: 13px/1.5 monospace; letter-spacing: .05em; }
+    .status { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; color: #aeb4aa; font: 11px monospace; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #ffb84d; box-shadow: 0 0 12px #ffb84d; }
+    @keyframes breathe { 50% { opacity: .42; transform: translateY(5px); } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="cable"><svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v3a6 6 0 0 1-6 6v4M9 3h-2M17 3h-2"/></svg></div>
+    <h1>PODŁĄCZ KOMPUTER</h1>
+    <p>EndoDeck czeka na hosta USB.<br>Po podłączeniu panel uruchomi się automatycznie.</p>
+    <div class="status"><span class="dot"></span> USB ROZŁĄCZONE</div>
+  </main>
+</body>
+</html>

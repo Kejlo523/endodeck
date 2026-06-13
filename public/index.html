@@ -13,6 +13,8 @@
       <div class="brand"><span class="brand-mark"></span><strong id="deck-title">ENDO DECK</strong><span id="page-label">Główna</span></div>
       <div class="status-line">
         <span class="status" id="usb-status"><i></i>USB</span>
+        <span class="power-status" id="power-status">-- mA</span>
+        <span class="battery-status" id="battery-status">--%</span>
         <time id="clock">00:00</time>
         <button class="settings-trigger" id="settings-trigger" aria-label="Edytuj przyciski" title="Edytuj przyciski">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M4.9 4.9 7 6l2-1 1-2h4l1 2 2 1 2.1-1.1 2 3.5-2 1.3v2.6l2 1.3-2 3.5L17 16l-2 1-1 2h-4l-1-2-2-1-2.1 1.1-2-3.5 2-1.3V9.7l-2-1.3Z"/></svg>
@@ -38,8 +40,10 @@
           <option value="accent">Limonkowy</option><option value="blue">Niebieski</option><option value="green">Zielony</option>
           <option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option>
         </select></label>
+        <label>Kolor decka<input id="edit-accent" type="color" aria-label="Kolor decka"></label>
         <label>Typ akcji<select id="edit-type">
           <option value="hotkey">Skrót klawiszowy</option><option value="launch">Uruchom program / URL</option>
+          <option value="processHotkey">Skrót do konkretnej aplikacji</option>
           <option value="media">Klawisz multimedialny</option><option value="page">Przejdź do strony</option>
           <option value="sequence">Sekwencja automatyzacji</option><option value="command">Polecenie</option>
         </select></label>
@@ -48,6 +52,16 @@
         <button class="settings-save" type="submit">ZAPISZ ZMIANY</button>
       </form>
     </div>
+  </section>
+  <section class="screensaver hidden" id="screensaver" aria-hidden="true">
+    <div class="ambient-orbit orbit-a"></div><div class="ambient-orbit orbit-b"></div>
+    <header class="saver-status"><span id="saver-pc"><i></i>PC</span><span id="saver-power">-- mA</span><span id="saver-battery">--%</span></header>
+    <main class="saver-main">
+      <div class="saver-time"><time id="saver-clock">00:00</time><span id="saver-date">---</span></div>
+      <div class="weather-now"><span class="weather-symbol" id="weather-symbol">·</span><strong id="weather-temp">--°</strong><div><b id="weather-city">Warszawa</b><span id="weather-description">Pobieram pogodę</span></div></div>
+      <div class="forecast" id="forecast"></div>
+    </main>
+    <footer>DOTKNIJ, ABY WRÓCIĆ DO ENDO DECK</footer>
   </section>
   <script type="module" src="/app.js"></script>
 </body>

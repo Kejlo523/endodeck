@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { executeAction } from "./actions.js";
 import { AdbBridge } from "./adb.js";
 import { getAudioSnapshot, setMasterVolume, setSessionVolume } from "./audio.js";
+import { getWeather } from "./weather.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
@@ -14,7 +15,7 @@ const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 let config = JSON.parse(await readFile(configPath, "utf8"));
 let configMtime = (await stat(configPath)).mtimeMs;
 const clients = new Set();
-const state = { adb: false, serial: null, lastAction: null, error: null };
+const state = { adb: false, serial: null, battery: null, lastAction: null, error: null };
 
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -70,9 +71,10 @@ async function bodyJson(request) {
   return JSON.parse(body || "{}");
 }
 
-const adb = new AdbBridge(config.port, ({ connected, serial }) => {
+const adb = new AdbBridge(config.port, ({ connected, serial, battery }) => {
   state.adb = connected;
   state.serial = serial;
+  state.battery = battery;
   publish();
 });
 
@@ -88,6 +90,9 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 200, { ok: true, config });
     }
     if (request.method === "GET" && url.pathname === "/api/state") return sendJson(response, 200, state);
+    if (request.method === "GET" && url.pathname === "/api/weather") {
+      return sendJson(response, 200, await getWeather(config.weather));
+    }
     if (request.method === "GET" && url.pathname === "/api/audio") {
       return sendJson(response, 200, await getAudioSnapshot());
     }

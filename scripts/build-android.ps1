@@ -18,7 +18,7 @@ if (Test-Path $build) { Remove-Item -LiteralPath $build -Recurse -Force }
 New-Item -ItemType Directory -Path (Join-Path $build 'classes'), (Join-Path $build 'dex'), $dist -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $build 'native\lib\armeabi-v7a') -Force | Out-Null
 
-& $aapt package -f -M (Join-Path $android 'AndroidManifest.xml') -I $platform -F (Join-Path $build 'base-unsigned.apk')
+& $aapt package -f -M (Join-Path $android 'AndroidManifest.xml') -A (Join-Path $android 'assets') -I $platform -F (Join-Path $build 'base-unsigned.apk')
 if ($LASTEXITCODE -ne 0) { throw 'aapt failed to build the resource package.' }
 
 $source = Join-Path $android 'src\pl\endozero\endodeck\MainActivity.java'

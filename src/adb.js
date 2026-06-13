@@ -54,11 +54,34 @@ export class AdbBridge {
       }
 
       if (!serial) this.configuredSerial = null;
-      this.onState?.({ connected: this.connected, serial: serial ?? null });
+      let battery = null;
+      if (serial) {
+        try {
+          const [currentResult, voltageResult, capacityResult, statusResult] = await Promise.all([
+            this.run(["-s", serial, "shell", "cat", "/sys/class/power_supply/Battery/current_now"], 2500),
+            this.run(["-s", serial, "shell", "cat", "/sys/class/power_supply/Battery/voltage_now"], 2500),
+            this.run(["-s", serial, "shell", "cat", "/sys/class/power_supply/Battery/capacity"], 2500),
+            this.run(["-s", serial, "shell", "cat", "/sys/class/power_supply/Battery/status"], 2500)
+          ]);
+          const rawCurrent = Number(currentResult.stdout.trim());
+          const rawVoltage = Number(voltageResult.stdout.trim());
+          const currentMa = Math.abs(rawCurrent) > 10_000 ? rawCurrent / 1000 : rawCurrent;
+          const voltageV = rawVoltage > 100_000 ? rawVoltage / 1_000_000 : rawVoltage / 1000;
+          battery = {
+            currentMa: Math.round(currentMa),
+            voltageV: Number(voltageV.toFixed(2)),
+            powerW: Number((Math.abs(currentMa) * voltageV / 1000).toFixed(2)),
+            percent: Number(capacityResult.stdout.trim()),
+            status: statusResult.stdout.trim()
+          };
+        } catch {}
+      }
+
+      this.onState?.({ connected: this.connected, serial: serial ?? null, battery });
     } catch {
       this.connected = false;
       this.configuredSerial = null;
-      this.onState?.({ connected: false, serial: null });
+      this.onState?.({ connected: false, serial: null, battery: null });
     }
   }
 
