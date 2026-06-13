@@ -9,8 +9,12 @@ const screensaver = $("#screensaver");
 const fields = {
   accent: $("#edit-accent"),
   dim: $("#edit-dim"),
-  saver: $("#edit-saver")
+  saver: $("#edit-saver"),
+  nowPlaying: $("#edit-nowplaying"),
+  equalizer: $("#edit-equalizer")
 };
+const nowPlayingBar = $("#now-playing");
+const saverNowPlaying = $("#saver-now-playing");
 
 let config;
 let currentPage = "home";
@@ -52,6 +56,10 @@ function createDeckButton(button) {
   element.style.setProperty("--enter-delay", `${Math.min(11, Math.max(0, Number(button.position ?? 1) - 1)) * 24}ms`);
   element.setAttribute("aria-label", `${button.label} ${button.hint ?? ""}`.trim());
   element.innerHTML = `<span class="tile-number">${String(button.position ?? "").padStart(2, "0")}</span><span class="live-badge"></span><span class="icon">${iconSvg(button.icon)}</span><span class="tile-copy"><strong>${button.label}</strong><small>${button.hint ?? ""}</small></span>`;
+  element.addEventListener("pointerdown", () => element.classList.add("pressed"));
+  element.addEventListener("pointerup", () => element.classList.remove("pressed"));
+  element.addEventListener("pointerleave", () => element.classList.remove("pressed"));
+  element.addEventListener("pointercancel", () => element.classList.remove("pressed"));
   element.addEventListener("click", () => trigger(button, element));
   return element;
 }
@@ -129,7 +137,6 @@ function renderMixer(page) {
 
 async function trigger(button, element) {
   if (button.action.type === "page") return render(button.action.page);
-  element.classList.add("pressed");
   navigator.vibrate?.(24);
   try {
     const response = await fetch("/api/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: button.id }) });
@@ -138,13 +145,14 @@ async function trigger(button, element) {
     if (result.page) render(result.page);
     if (result.message) showToast(result.message);
   } catch (error) { showToast(error.message, true); }
-  finally { setTimeout(() => element.classList.remove("pressed"), 140); }
 }
 
 function openSettings() {
   fields.accent.value = config.accent;
   fields.dim.value = String(config.ui?.dimAfterSeconds ?? 90);
   fields.saver.value = String(config.ui?.screensaverAfterSeconds ?? 300);
+  fields.nowPlaying.checked = nowPlayingEnabled();
+  fields.equalizer.checked = equalizerEnabled();
   settingsPanel.classList.remove("hidden"); settingsPanel.setAttribute("aria-hidden", "false");
 }
 
@@ -156,7 +164,9 @@ settingsForm.addEventListener("submit", async (event) => {
     config.accent = fields.accent.value;
     config.ui = {
       dimAfterSeconds: Math.max(10, Number(fields.dim.value) || 90),
-      screensaverAfterSeconds: Math.max(30, Number(fields.saver.value) || 300)
+      screensaverAfterSeconds: Math.max(30, Number(fields.saver.value) || 300),
+      showNowPlaying: fields.nowPlaying.checked,
+      showEqualizer: fields.equalizer.checked
     };
     const response = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(config) });
     const result = await response.json();
@@ -164,6 +174,7 @@ settingsForm.addEventListener("submit", async (event) => {
     config = result.config;
     document.documentElement.style.setProperty("--accent", config.accent);
     render(currentPage);
+    renderNowPlaying();
     resetIdle();
     closeSettings();
     showToast("Zapisano ustawienia");
@@ -171,6 +182,35 @@ settingsForm.addEventListener("submit", async (event) => {
 });
 
 $("#settings-trigger").addEventListener("click", openSettings); $("#settings-close").addEventListener("click", closeSettings);
+
+function nowPlayingEnabled() { return config?.ui?.showNowPlaying !== false; }
+function equalizerEnabled() { return config?.ui?.showEqualizer !== false; }
+
+function renderNowPlaying() {
+  const track = latestState.nowPlaying;
+  const enabled = nowPlayingEnabled();
+  const hasTrack = enabled && track && track.title;
+  const showEq = equalizerEnabled();
+
+  nowPlayingBar.classList.toggle("hidden", !hasTrack);
+  nowPlayingBar.setAttribute("aria-hidden", String(!hasTrack));
+  saverNowPlaying.classList.toggle("hidden", !hasTrack);
+  saverNowPlaying.setAttribute("aria-hidden", String(!hasTrack));
+  screensaver.classList.toggle("has-now-playing", hasTrack);
+  if (!hasTrack) return;
+
+  $("#now-playing-title").textContent = track.title;
+  $("#now-playing-artist").textContent = track.artist || "";
+  $("#saver-now-playing-title").textContent = track.title;
+  $("#saver-now-playing-artist").textContent = track.artist || "";
+
+  const barEq = $("#now-playing-eq");
+  const saverEq = $("#saver-now-playing-eq");
+  barEq.classList.toggle("hidden", !showEq);
+  saverEq.classList.toggle("hidden", !showEq);
+  barEq.classList.toggle("playing", showEq && Boolean(track.playing));
+  saverEq.classList.toggle("playing", showEq && Boolean(track.playing));
+}
 
 function updateState(state) {
   latestState = state;
@@ -180,6 +220,7 @@ function updateState(state) {
   $("#battery-status").textContent = battery ? `${battery.percent}%` : "--%";
   $("#saver-power").textContent = $("#power-status").textContent; $("#saver-battery").textContent = $("#battery-status").textContent;
   applyControlStates();
+  renderNowPlaying();
   if (state.error) showToast(state.error, true);
 }
 
@@ -211,6 +252,7 @@ function applyConfig(nextConfig, resetTimers = true) {
   $("#deck-title").textContent = config.title;
   cacheAccent(config.accent);
   render(currentPage);
+  renderNowPlaying();
   if (resetTimers) resetIdle();
 }
 

@@ -1,8 +1,16 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import { toggleMicrophoneMute, toggleProcessMute } from "./audio.js";
 
 const execFileAsync = promisify(execFile);
+const sendKeysScript = fileURLToPath(new URL("../scripts/send-keys.ps1", import.meta.url));
+
+async function runKeyScript(codes, { holdMs = 50, extended = false } = {}) {
+  const args = ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", sendKeysScript, "-Keys", codes.join(","), "-HoldMs", String(holdMs)];
+  if (extended) args.push("-Extended");
+  await execFileAsync("powershell.exe", args, { windowsHide: true, timeout: 6000 });
+}
 
 const virtualKeys = {
   playPause: 0xB3,
@@ -45,10 +53,17 @@ function keyCode(key) {
 
 async function pressVirtualKeys(keys) {
   const codes = keys.map(keyCode);
-  const down = codes.map((code) => `[DeckKeys]::keybd_event(${code},0,0,[UIntPtr]::Zero)`).join(";");
-  const up = [...codes].reverse().map((code) => `[DeckKeys]::keybd_event(${code},0,2,[UIntPtr]::Zero)`).join(";");
-  const script = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class DeckKeys { [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr extra); }';${down};Start-Sleep -Milliseconds 45;${up}`;
-  await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 5000 });
+  if (!codes.length) throw new Error("Skrót musi zawierać co najmniej jeden klawisz");
+  await runKeyScript(codes, { holdMs: 45 });
+}
+
+// Globalny skrót systemowy: wysyła klawisze z ustawioną flagą rozszerzoną tam,
+// gdzie to potrzebne, aby aplikacje z globalnymi hotkeyami (np. Discord)
+// przechwyciły go niezależnie od fokusu i nawet gdy są zminimalizowane.
+async function pressGlobalHotkey(keys) {
+  const codes = keys.map(keyCode);
+  if (!codes.length) throw new Error("Skrót globalny musi zawierać co najmniej jeden klawisz");
+  await runKeyScript(codes, { holdMs: 60, extended: true });
 }
 
 async function pressProcessHotkey(processName, keys) {
@@ -87,6 +102,9 @@ export async function executeAction(action, context) {
       return {};
     case "hotkey":
       await pressVirtualKeys(action.keys ?? []);
+      return {};
+    case "globalHotkey":
+      await pressGlobalHotkey(action.keys ?? []);
       return {};
     case "processHotkey":
       await pressProcessHotkey(action.process, action.keys ?? []);

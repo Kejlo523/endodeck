@@ -7,6 +7,7 @@ import { AdbBridge } from "./adb.js";
 import { getAudioSnapshot, setMasterVolume, setSessionVolume } from "./audio.js";
 import { getWeather } from "./weather.js";
 import { getControlStates } from "./control-status.js";
+import { getNowPlaying } from "./now-playing.js";
 import { reversePlace, searchPlaces } from "./geocode.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -17,7 +18,7 @@ const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 let config = JSON.parse(await readFile(configPath, "utf8"));
 let configMtime = (await stat(configPath)).mtimeMs;
 const clients = new Set();
-const state = { adb: false, serial: null, battery: null, controls: {}, lastAction: null, error: null };
+const state = { adb: false, serial: null, battery: null, controls: {}, nowPlaying: null, lastAction: null, error: null };
 
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -111,6 +112,9 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/audio") {
       return sendJson(response, 200, await getAudioSnapshot());
     }
+    if (request.method === "GET" && url.pathname === "/api/nowplaying") {
+      return sendJson(response, 200, await getNowPlaying());
+    }
     if (request.method === "POST" && url.pathname === "/api/audio") {
       const body = await bodyJson(request);
       const volume = Math.max(0, Math.min(100, Number(body.volume)));
@@ -169,11 +173,20 @@ setInterval(async () => {
   if (statusPolling) return;
   statusPolling = true;
   try {
-    const controls = await getControlStates(config);
+    const [controls, nowPlaying] = await Promise.all([
+      getControlStates(config),
+      getNowPlaying().catch(() => state.nowPlaying)
+    ]);
+    let changed = false;
     if (JSON.stringify(controls) !== JSON.stringify(state.controls)) {
       state.controls = controls;
-      publish();
+      changed = true;
     }
+    if (JSON.stringify(nowPlaying) !== JSON.stringify(state.nowPlaying)) {
+      state.nowPlaying = nowPlaying;
+      changed = true;
+    }
+    if (changed) publish();
   } catch { }
   statusPolling = false;
 }, 2200);

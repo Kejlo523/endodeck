@@ -11,6 +11,10 @@
   <main class="deck-shell">
     <header class="deck-header">
       <div class="brand"><span class="brand-mark"></span><div><strong id="deck-title">ENDO DECK</strong><span id="page-label">Główna</span></div></div>
+      <div class="now-playing hidden" id="now-playing" aria-hidden="true">
+        <span class="eq" id="now-playing-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="np-copy"><strong id="now-playing-title">—</strong><small id="now-playing-artist"></small></span>
+      </div>
       <div class="status-line">
         <span class="status" id="usb-status"><i></i>USB</span><span class="power-status" id="power-status">-- mA</span><span class="battery-status" id="battery-status">--%</span><time id="clock">00:00</time>
         <button class="settings-trigger" id="settings-trigger" aria-label="Ustawienia decka" title="Ustawienia decka"></button>
@@ -30,6 +34,8 @@
         <label><span>KOLOR AKCENTU</span><small>Wspólny kolor interfejsu i wygaszacza</small><input id="edit-accent" type="color" aria-label="Kolor akcentu"></label>
         <label><span>PRZYCIEMNIENIE</span><small>Po ilu sekundach ekran zaczyna płynnie ciemnieć</small><div class="number-setting"><input id="edit-dim" type="number" min="10" max="3600"><b>SEK.</b></div></label>
         <label><span>WYGASZACZ</span><small>Po ilu sekundach pojawia się zegar i pogoda</small><div class="number-setting"><input id="edit-saver" type="number" min="30" max="7200"><b>SEK.</b></div></label>
+        <label class="toggle-setting"><span>TERAZ GRA</span><small>Tytuł i wykonawca utworu ze Spotify, YouTube i innych odtwarzaczy</small><label class="switch"><input id="edit-nowplaying" type="checkbox"><i></i></label></label>
+        <label class="toggle-setting"><span>EQUALIZER</span><small>Animowane słupki przy informacji o utworze</small><label class="switch"><input id="edit-equalizer" type="checkbox"><i></i></label></label>
         <button class="settings-save" type="submit">ZAPISZ USTAWIENIA</button>
       </form>
     </div>
@@ -43,6 +49,10 @@
       <div class="weather-now"><span class="weather-symbol" id="weather-symbol">·</span><strong id="weather-temp">--°</strong><div><b id="weather-city">Warszawa</b><span id="weather-description">Pobieram pogodę</span></div></div>
       <div class="forecast" id="forecast"></div>
     </main>
+    <div class="saver-now-playing hidden" id="saver-now-playing" aria-hidden="true">
+      <span class="eq saver-eq" id="saver-now-playing-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="np-copy"><b>TERAZ GRA</b><strong id="saver-now-playing-title">—</strong><span id="saver-now-playing-artist"></span></span>
+    </div>
     <footer>DOTKNIJ, ABY WRÓCIĆ DO ENDO DECK</footer>
   </section>
   <script type="module" src="/app.js"></script>

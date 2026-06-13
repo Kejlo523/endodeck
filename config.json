@@ -1,10 +1,10 @@
 {
   "port": 8765,
   "title": "ENDO DECK",
-  "accent": "#a358fe",
+  "accent": "#ddc2ff",
   "ui": {
-    "dimAfterSeconds": 60,
-    "screensaverAfterSeconds": 180
+    "dimAfterSeconds": 20,
+    "screensaverAfterSeconds": 60
   },
   "weather": {
     "city": "Szczecin",
@@ -50,16 +50,16 @@
         {
           "id": "discord-deafen",
           "label": "WYCISZENIE",
-          "hint": "Discord · bez fokusu",
+          "hint": "Discord · skrót globalny",
           "icon": "headset",
           "tone": "red",
           "action": {
-            "type": "processAudioMute",
-            "process": "Discord"
-          },
-          "status": {
-            "type": "processAudioMute",
-            "process": "Discord"
+            "type": "globalHotkey",
+            "keys": [
+              "CTRL",
+              "ALT",
+              "END"
+            ]
           }
         },
         {
@@ -268,16 +268,15 @@
         {
           "id": "discord-camera",
           "label": "KAMERA",
-          "hint": "Discord · globalnie",
+          "hint": "Discord · skrót globalny",
           "icon": "video",
           "tone": "red",
           "action": {
-            "type": "processHotkey",
-            "process": "Discord",
+            "type": "globalHotkey",
             "keys": [
               "CTRL",
-              "SHIFT",
-              "V"
+              "ALT",
+              "HOME"
             ]
           }
         },
