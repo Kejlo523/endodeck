@@ -6,6 +6,8 @@ import { executeAction } from "./actions.js";
 import { AdbBridge } from "./adb.js";
 import { getAudioSnapshot, setMasterVolume, setSessionVolume } from "./audio.js";
 import { getWeather } from "./weather.js";
+import { getControlStates } from "./control-status.js";
+import { reversePlace, searchPlaces } from "./geocode.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
@@ -15,7 +17,7 @@ const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 let config = JSON.parse(await readFile(configPath, "utf8"));
 let configMtime = (await stat(configPath)).mtimeMs;
 const clients = new Set();
-const state = { adb: false, serial: null, battery: null, lastAction: null, error: null };
+const state = { adb: false, serial: null, battery: null, controls: {}, lastAction: null, error: null };
 
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -93,6 +95,12 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/weather") {
       return sendJson(response, 200, await getWeather(config.weather));
     }
+    if (request.method === "GET" && url.pathname === "/api/geocode/search") {
+      return sendJson(response, 200, await searchPlaces(url.searchParams.get("q")));
+    }
+    if (request.method === "GET" && url.pathname === "/api/geocode/reverse") {
+      return sendJson(response, 200, await reversePlace(url.searchParams.get("lat"), url.searchParams.get("lon")));
+    }
     if (request.method === "GET" && url.pathname === "/api/audio") {
       return sendJson(response, 200, await getAudioSnapshot());
     }
@@ -121,6 +129,7 @@ const server = createServer(async (request, response) => {
         const result = await executeAction(button.action, {});
         state.lastAction = button.id;
         state.error = null;
+        state.controls = await getControlStates(config).catch(() => state.controls);
         publish();
         return sendJson(response, 200, { ok: true, ...result });
       } catch (error) {
@@ -146,6 +155,20 @@ server.listen(config.port, "127.0.0.1", () => {
   console.log(`EndoDeck działa na http://127.0.0.1:${config.port}`);
   adb.start();
 });
+
+let statusPolling = false;
+setInterval(async () => {
+  if (statusPolling) return;
+  statusPolling = true;
+  try {
+    const controls = await getControlStates(config);
+    if (JSON.stringify(controls) !== JSON.stringify(state.controls)) {
+      state.controls = controls;
+      publish();
+    }
+  } catch { }
+  statusPolling = false;
+}, 2200);
 
 process.on("SIGINT", () => {
   adb.stop();

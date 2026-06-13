@@ -4,46 +4,65 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>EndoDeck Studio</title>
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/editor.css">
 </head>
 <body>
   <header class="studio-header">
-    <div class="studio-brand"><span></span><div><strong>ENDO DECK STUDIO</strong><small>Edytor urządzenia</small></div></div>
-    <div class="header-actions"><a href="/" target="_blank">OTWÓRZ DECK</a><button id="save-config">ZAPISZ NA URZĄDZENIU</button></div>
+    <div class="studio-brand"><span></span><div><strong>ENDO DECK</strong><small>CONTROL SURFACE STUDIO</small></div></div>
+    <div class="header-status"><i></i><span id="header-device">Telefon połączony</span></div>
+    <div class="header-actions"><a href="/">PODGLĄD DECKA</a><button id="save-config">ZAPISZ ZMIANY</button></div>
   </header>
+
   <main class="studio-layout">
-    <aside class="global-panel panel">
-      <div class="panel-title"><span>01</span><div><strong>URZĄDZENIE</strong><small>Wygląd i zachowanie</small></div></div>
-      <label>Kolor akcentu<div class="color-row"><input id="global-accent" type="color"><output id="accent-value">#b7f34a</output></div></label>
-      <label>Przyciemnienie po<input id="global-dim" type="number" min="15" max="3600"><small>sekundach bezczynności</small></label>
-      <label>Wygaszacz po<input id="global-saver" type="number" min="30" max="7200"><small>sekundach bezczynności</small></label>
-      <div class="section-line"></div>
-      <label>Miasto<input id="weather-city"></label>
-      <label>Szerokość geograficzna<input id="weather-lat" type="number" step="0.0001"></label>
-      <label>Długość geograficzna<input id="weather-lon" type="number" step="0.0001"></label>
-      <div class="connection-card"><i></i><div><strong id="connection-label">ŁĄCZENIE</strong><small id="connection-detail">Sprawdzam telefon</small></div></div>
+    <aside class="panel global-panel">
+      <header class="panel-title"><span>01</span><div><strong>URZĄDZENIE</strong><small>Wygląd, sen i lokalizacja</small></div></header>
+      <div class="panel-scroll">
+        <section class="control-section">
+          <div class="section-heading"><strong>WYGLĄD</strong><span>Globalne ustawienia decka</span></div>
+          <label>Kolor akcentu<div class="color-row"><input id="global-accent" type="color"><output id="accent-value"></output></div></label>
+          <div class="two-cols">
+            <label>Przyciemnij po<input id="global-dim" type="number" min="10"><small>sekundach</small></label>
+            <label>Wygaszacz po<input id="global-saver" type="number" min="30"><small>sekundach</small></label>
+          </div>
+        </section>
+        <section class="control-section location-section">
+          <div class="section-heading"><strong>POGODA</strong><span>Kliknij mapę lub wyszukaj miasto</span></div>
+          <form class="place-search" id="place-search"><input id="place-query" type="search" placeholder="Wpisz miasto"><button aria-label="Szukaj">SZUKAJ</button></form>
+          <div class="place-results" id="place-results"></div>
+          <div class="location-map" id="location-map"></div>
+          <div class="map-credit">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></div>
+          <div class="selected-place"><i></i><div><strong id="weather-city">Warszawa</strong><span id="weather-coordinates">52.2297, 21.0122</span></div></div>
+          <input id="weather-lat" type="hidden"><input id="weather-lon" type="hidden">
+        </section>
+        <div class="connection-card"><i></i><div><strong id="connection-label">SPRAWDZAM TELEFON</strong><small id="connection-detail">---</small></div></div>
+      </div>
     </aside>
 
-    <section class="deck-editor panel">
-      <div class="panel-title"><span>02</span><div><strong>UKŁAD KAFELKÓW</strong><small>Kliknij kafel, aby go edytować</small></div></div>
+    <section class="panel deck-editor">
+      <header class="panel-title"><span>02</span><div><strong>UKŁAD DECKA</strong><small>Wybierz kafel i zobacz efekt od razu</small></div></header>
       <nav class="page-tabs" id="page-tabs"></nav>
       <div class="deck-preview" id="deck-preview"></div>
     </section>
 
-    <aside class="tile-panel panel">
-      <div class="panel-title"><span>03</span><div><strong>WYBRANY KAFEL</strong><small id="selected-id">---</small></div></div>
-      <form id="tile-form">
-        <div class="two-cols"><label>Nazwa<input id="tile-label" maxlength="22"></label><label>Opis<input id="tile-hint" maxlength="32"></label></div>
-        <div class="two-cols"><label>Ikona<select id="tile-icon"></select></label><label>Kolor<select id="tile-tone"><option value="accent">Akcent</option><option value="blue">Niebieski</option><option value="green">Zielony</option><option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option></select></label></div>
-        <label>Typ akcji<select id="tile-type"><option value="hotkey">Skrót klawiszowy</option><option value="processHotkey">Skrót do aplikacji</option><option value="launch">Uruchom program / URL</option><option value="media">Multimedia</option><option value="page">Przejście do strony</option><option value="command">Polecenie</option><option value="sequence">Sekwencja JSON</option></select></label>
-        <label><span id="primary-caption">Wartość</span><input id="tile-primary"></label>
-        <label><span id="detail-caption">Argumenty</span><textarea id="tile-detail" rows="6"></textarea></label>
+    <aside class="panel tile-panel">
+      <header class="panel-title"><span>03</span><div><strong>WYBRANY KAFEL</strong><small id="selected-id">---</small></div></header>
+      <form id="tile-form" class="tile-form">
+        <div class="two-cols"><label>Nazwa<input id="tile-label" maxlength="22"></label><label>Opis<input id="tile-hint" maxlength="38"></label></div>
+        <section class="icon-editor">
+          <div class="section-heading"><strong>IKONA</strong><span id="selected-icon-name">---</span></div>
+          <div class="icon-search-row"><div class="selected-icon-preview" id="selected-icon-preview"></div><input id="icon-search" type="search" placeholder="Szukaj w 140 ikonach"></div>
+          <div class="icon-picker-grid" id="icon-picker"></div>
+        </section>
+        <div class="two-cols"><label>Kolor<select id="tile-tone"><option value="accent">Akcent</option><option value="blue">Niebieski</option><option value="green">Zielony</option><option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option></select></label><label>Typ akcji<select id="tile-type"><option value="hotkey">Skrót klawiszowy</option><option value="processHotkey">Skrót aplikacji</option><option value="microphoneMute">Mikrofon systemowy</option><option value="launch">Program / URL</option><option value="media">Multimedia</option><option value="page">Zmiana strony</option><option value="command">Polecenie</option><option value="sequence">Sekwencja JSON</option></select></label></div>
+        <div id="action-fields"></div>
         <div class="order-actions"><button type="button" id="move-left">← WCZEŚNIEJ</button><button type="button" id="move-right">PÓŹNIEJ →</button></div>
         <button class="apply-tile" type="submit">ZASTOSUJ DO PODGLĄDU</button>
       </form>
     </aside>
   </main>
-  <div class="studio-toast" id="studio-toast"></div>
+  <div class="studio-toast" id="studio-toast" role="status"></div>
+  <script src="/vendor/leaflet/leaflet.js"></script>
   <script type="module" src="/editor.js"></script>
 </body>
 </html>

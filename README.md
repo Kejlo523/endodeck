@@ -4,11 +4,12 @@ Lokalny Stream Deck z telefonu Huawei P8 Lite, sterowany przez USB i `adb revers
 
 ## Najważniejsze funkcje
 
-- 12 dużych kafelków w układzie dopasowanym do ekranu 1280 x 720
+- 12 dużych kafelków z centralnymi ikonami Font Awesome, dopasowanych do ekranu 1280 x 720
 - globalne skróty Discorda działające także wtedy, gdy Discord nie jest aktywnym oknem
 - multimedia, programy, skróty Windows, sekwencje akcji i mikser głośności aplikacji
-- Studio PC do edycji kafelków, kolejności, ikon, kolorów i akcji
-- regulowany kolor akcentu, przyciemnienie i wygaszacz z pogodą na siedem dni
+- Studio PC do edycji kafelków, kolejności, kolorów i akcji, z wyszukiwalnym katalogiem ponad 140 ikon
+- wybór miasta z listy lub bezpośrednio z mapy OpenStreetMap
+- regulowany kolor akcentu, przyciemnienie i wygaszacz z pogodą na siedem dni oraz sekundami przy zegarze
 - pasek stanu z połączeniem USB, prądem baterii i poziomem naładowania
 - lokalny ekran `PODŁĄCZ KOMPUTER`, gdy serwer lub przewód USB jest niedostępny
 - moduły Magisk do uśpienia po odłączeniu, wyłączenia radia, DT2W i usunięcia blokady
@@ -58,11 +59,15 @@ Po instalacji wymagany jest restart telefonu. Czas do uśpienia i zachowanie try
 
 ## Akcje i dźwięk
 
-Obsługiwane typy akcji to `hotkey`, `processHotkey`, `media`, `launch`, `command`, `sequence` i `page`. `processHotkey` na chwilę aktywuje wskazany proces, wysyła skrót i przywraca poprzednie okno, dzięki czemu mute, deafen i kamera Discorda działają globalnie.
+Obsługiwane typy akcji to `hotkey`, `processHotkey`, `microphoneMute`, `media`, `launch`, `command`, `sequence` i `page`. `processHotkey` na chwilę aktywuje wskazany proces, wysyła skrót i przywraca poprzednie okno. `microphoneMute` steruje domyślnym wejściem Windows przez Core Audio, a kafel pokazuje jego rzeczywisty stan nawet po zmianie wykonanej poza EndoDeck.
+
+Kafle programów mogą mieć źródło stanu `process`, dlatego Discord i Spotify podświetlają się tylko wtedy, gdy odpowiadający proces faktycznie działa. Stan natywnego mute/deafen wewnątrz klienta Discord nie jest wystawiany przez Windows; przycisk mikrofonu używa więc systemowego mute, które jest mierzalne i skutecznie odcina mikrofon we wszystkich aplikacjach.
 
 Mikser używa Windows Core Audio. Pokazuje poziom systemowy oraz aplikacje mające aktywną sesję dźwięku. Aplikacja pojawi się po rozpoczęciu odtwarzania lub wygenerowaniu dźwięku.
 
 Wartość mA pochodzi z czujnika baterii telefonu. Jest najlepszym dostępnym przybliżeniem bilansu energii, ale P8 Lite nie udostępnia osobnego czujnika prądu wejściowego USB.
+
+Interfejs korzysta z [Font Awesome Free](https://fontawesome.com/license/free) oraz [Leaflet](https://leafletjs.com/). Warstwa mapy pochodzi z [OpenStreetMap](https://www.openstreetmap.org/copyright), a wyszukiwanie i odwrotne geokodowanie są wykonywane przez backend z ograniczeniem częstotliwości zapytań.
 
 ## Obudowa 3D
 

@@ -3,61 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="theme-color" content="#0a0b0a">
+  <meta name="theme-color" content="#080a08">
   <title>EndoDeck</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <main class="deck-shell">
     <header class="deck-header">
-      <div class="brand"><span class="brand-mark"></span><strong id="deck-title">ENDO DECK</strong><span id="page-label">Główna</span></div>
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <div><strong id="deck-title">ENDO DECK</strong><span id="page-label">Główna</span></div>
+      </div>
       <div class="status-line">
         <span class="status" id="usb-status"><i></i>USB</span>
         <span class="power-status" id="power-status">-- mA</span>
         <span class="battery-status" id="battery-status">--%</span>
         <time id="clock">00:00</time>
-        <button class="settings-trigger" id="settings-trigger" aria-label="Edytuj przyciski" title="Edytuj przyciski">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M4.9 4.9 7 6l2-1 1-2h4l1 2 2 1 2.1-1.1 2 3.5-2 1.3v2.6l2 1.3-2 3.5L17 16l-2 1-1 2h-4l-1-2-2-1-2.1 1.1-2-3.5 2-1.3V9.7l-2-1.3Z"/></svg>
-        </button>
+        <button class="settings-trigger" id="settings-trigger" aria-label="Edytuj przyciski" title="Edytuj przyciski"></button>
       </div>
     </header>
     <section class="button-grid" id="button-grid" aria-live="polite"></section>
     <div class="toast" id="toast" role="status"></div>
   </main>
+
   <section class="settings-panel hidden" id="settings-panel" aria-hidden="true">
     <div class="settings-card">
       <header class="settings-header">
-        <div><strong>EDYTOR PRZYCISKÓW</strong><span>Zmiany zapisują się na komputerze</span></div>
+        <div><strong>SZYBKA EDYCJA</strong><span>Pełny edytor jest dostępny w EndoDeck Studio na komputerze</span></div>
         <button id="settings-close" class="settings-close" aria-label="Zamknij">×</button>
       </header>
       <form id="settings-form" class="settings-form">
-        <label>Strona<select id="edit-page"></select></label>
-        <label>Przycisk<select id="edit-button"></select></label>
-        <label>Nazwa<input id="edit-label" maxlength="22" required></label>
-        <label>Opis<input id="edit-hint" maxlength="32"></label>
-        <label>Ikona<select id="edit-icon"></select></label>
-        <label>Kolor<select id="edit-tone">
-          <option value="accent">Limonkowy</option><option value="blue">Niebieski</option><option value="green">Zielony</option>
-          <option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option>
-        </select></label>
-        <label>Kolor decka<input id="edit-accent" type="color" aria-label="Kolor decka"></label>
-        <label>Typ akcji<select id="edit-type">
-          <option value="hotkey">Skrót klawiszowy</option><option value="launch">Uruchom program / URL</option>
-          <option value="processHotkey">Skrót do konkretnej aplikacji</option>
-          <option value="media">Klawisz multimedialny</option><option value="page">Przejdź do strony</option>
-          <option value="sequence">Sekwencja automatyzacji</option><option value="command">Polecenie</option>
-        </select></label>
-        <label class="action-primary"><span id="edit-primary-label">Skrót</span><input id="edit-primary"></label>
-        <label class="action-detail"><span id="edit-detail-label">Argumenty JSON</span><textarea id="edit-detail" rows="3"></textarea></label>
+        <div class="settings-fields">
+          <label>Strona<select id="edit-page"></select></label>
+          <label>Przycisk<select id="edit-button"></select></label>
+          <label>Nazwa<input id="edit-label" maxlength="22" required></label>
+          <label>Opis<input id="edit-hint" maxlength="38"></label>
+          <label>Kolor<select id="edit-tone">
+            <option value="accent">Akcent</option><option value="blue">Niebieski</option><option value="green">Zielony</option>
+            <option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option>
+          </select></label>
+          <label>Kolor decka<input id="edit-accent" type="color" aria-label="Kolor decka"></label>
+          <label>Typ akcji<select id="edit-type">
+            <option value="hotkey">Skrót klawiszowy</option><option value="launch">Uruchom program / URL</option>
+            <option value="processHotkey">Skrót do konkretnej aplikacji</option><option value="microphoneMute">Wycisz mikrofon systemowy</option>
+            <option value="media">Klawisz multimedialny</option><option value="page">Przejdź do strony</option>
+            <option value="sequence">Sekwencja automatyzacji</option><option value="command">Polecenie</option>
+          </select></label>
+          <label class="action-primary"><span id="edit-primary-label">Skrót</span><input id="edit-primary"></label>
+          <label class="action-detail"><span id="edit-detail-label">Argumenty JSON</span><textarea id="edit-detail" rows="3"></textarea></label>
+        </div>
+        <aside class="quick-icon-panel">
+          <div class="selected-icon" id="quick-selected-icon"></div>
+          <label>Wyszukaj ikonę<input id="quick-icon-search" type="search" placeholder="np. mikrofon, terminal, muzyka"></label>
+          <div class="icon-picker-grid" id="quick-icon-grid"></div>
+        </aside>
         <button class="settings-save" type="submit">ZAPISZ ZMIANY</button>
       </form>
     </div>
   </section>
+
   <section class="screensaver hidden" id="screensaver" aria-hidden="true">
     <div class="ambient-orbit orbit-a"></div><div class="ambient-orbit orbit-b"></div>
     <header class="saver-status"><span id="saver-pc"><i></i>PC</span><span id="saver-power">-- mA</span><span id="saver-battery">--%</span></header>
     <main class="saver-main">
-      <div class="saver-time"><time id="saver-clock">00:00</time><span id="saver-date">---</span></div>
+      <div class="saver-time"><time id="saver-clock"><span id="saver-main-time">00:00</span><small id="saver-seconds">00</small></time><span id="saver-date">---</span></div>
       <div class="weather-now"><span class="weather-symbol" id="weather-symbol">·</span><strong id="weather-temp">--°</strong><div><b id="weather-city">Warszawa</b><span id="weather-description">Pobieram pogodę</span></div></div>
       <div class="forecast" id="forecast"></div>
     </main>

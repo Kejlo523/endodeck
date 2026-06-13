@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('list', 'master', 'session')]
+    [ValidateSet('list', 'status', 'master', 'session', 'microphone-toggle')]
     [string]$Action = 'list',
     [int]$Volume = 50,
     [int]$SessionId = -1
@@ -115,15 +115,25 @@ namespace EndoDeck {
     public sealed class AudioSnapshot {
         public int master;
         public bool muted;
+        public bool microphoneMuted;
         public List<AudioSessionInfo> sessions;
     }
 
+    public sealed class AudioStatus {
+        public bool muted;
+        public bool microphoneMuted;
+    }
+
     public static class Audio {
-        private static IMMDevice DefaultDevice() {
+        private static IMMDevice DefaultDevice(EDataFlow flow = EDataFlow.Render, ERole role = ERole.Multimedia) {
             var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
             IMMDevice device;
-            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(EDataFlow.Render, ERole.Multimedia, out device));
+            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(flow, role, out device));
             return device;
+        }
+
+        private static IAudioEndpointVolume Endpoint(EDataFlow flow, ERole role) {
+            return Activate<IAudioEndpointVolume>(DefaultDevice(flow, role), "5CDF2C82-841E-4546-9722-0CF74078229A");
         }
 
         private static T Activate<T>(IMMDevice device, string iid) {
@@ -187,8 +197,29 @@ namespace EndoDeck {
             return new AudioSnapshot {
                 master = (int)Math.Round(master * 100),
                 muted = masterMuted,
+                microphoneMuted = MicrophoneMuted(),
                 sessions = list
             };
+        }
+
+        public static bool MicrophoneMuted() {
+            bool muted;
+            Endpoint(EDataFlow.Capture, ERole.Communications).GetMute(out muted);
+            return muted;
+        }
+
+        public static AudioStatus Status() {
+            bool muted;
+            Endpoint(EDataFlow.Render, ERole.Multimedia).GetMute(out muted);
+            return new AudioStatus { muted = muted, microphoneMuted = MicrophoneMuted() };
+        }
+
+        public static bool ToggleMicrophone() {
+            var endpoint = Endpoint(EDataFlow.Capture, ERole.Communications);
+            bool muted;
+            endpoint.GetMute(out muted);
+            endpoint.SetMute(!muted, Guid.Empty);
+            return !muted;
         }
 
         public static void SetMaster(int volume) {
@@ -221,5 +252,7 @@ $Volume = [Math]::Max(0, [Math]::Min(100, $Volume))
 switch ($Action) {
     'master' { [EndoDeck.Audio]::SetMaster($Volume); @{ ok = $true } | ConvertTo-Json -Compress }
     'session' { [EndoDeck.Audio]::SetSession($SessionId, $Volume); @{ ok = $true } | ConvertTo-Json -Compress }
+    'microphone-toggle' { @{ ok = $true; muted = [EndoDeck.Audio]::ToggleMicrophone() } | ConvertTo-Json -Compress }
+    'status' { [EndoDeck.Audio]::Status() | ConvertTo-Json -Compress }
     default { [EndoDeck.Audio]::List() | ConvertTo-Json -Depth 5 -Compress }
 }

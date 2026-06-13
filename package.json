@@ -5,10 +5,16 @@
   "description": "USB Stream Deck for a repurposed Android phone",
   "type": "module",
   "scripts": {
+    "prepare": "node scripts/prepare-assets.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/actions.js && node --check src/audio.js && node --check src/weather.js && node --check src/adb.js && node --check public/app.js && node --check public/editor.js"
+    "check": "node --check src/server.js && node --check src/actions.js && node --check src/audio.js && node --check src/weather.js && node --check src/geocode.js && node --check src/control-status.js && node --check src/adb.js && node --check public/icon-ui.js && node --check public/app.js && node --check public/editor.js"
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@fortawesome/free-brands-svg-icons": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "leaflet": "^1.9.4"
   }
 }

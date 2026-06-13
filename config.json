@@ -28,22 +28,23 @@
               "--processStart",
               "Discord.exe"
             ]
+          },
+          "status": {
+            "type": "process",
+            "process": "Discord"
           }
         },
         {
           "id": "discord-mute",
           "label": "MIKROFON",
-          "hint": "Discord · globalnie",
-          "icon": "micOff",
+          "hint": "System · wszystkie aplikacje",
+          "icon": "microphone-slash",
           "tone": "red",
           "action": {
-            "type": "processHotkey",
-            "process": "Discord",
-            "keys": [
-              "CTRL",
-              "SHIFT",
-              "M"
-            ]
+            "type": "microphoneMute"
+          },
+          "status": {
+            "type": "microphoneMute"
           }
         },
         {
@@ -71,6 +72,10 @@
           "action": {
             "type": "launch",
             "command": "C:\\Users\\Kejlo\\AppData\\Roaming\\Spotify\\Spotify.exe"
+          },
+          "status": {
+            "type": "process",
+            "process": "Spotify"
           }
         },
         {

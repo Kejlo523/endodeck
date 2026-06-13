@@ -25,3 +25,11 @@ export function setMasterVolume(volume) {
 export function setSessionVolume(sessionId, volume) {
   return run(["-Action", "session", "-SessionId", String(sessionId), "-Volume", String(volume)]);
 }
+
+export function getAudioStatus() {
+  return run(["-Action", "status"]);
+}
+
+export function toggleMicrophoneMute() {
+  return run(["-Action", "microphone-toggle"]);
+}
