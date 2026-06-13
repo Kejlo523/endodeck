@@ -60,6 +60,14 @@ async function pressProcessHotkey(processName, keys) {
   await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 6000 });
 }
 
+async function pressBackgroundProcessHotkey(processName, keys) {
+  const codes = keys.map(keyCode);
+  const codeList = codes.join(",");
+  const safeName = String(processName).replace(/'/g, "''");
+  const script = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class DeckBackground { [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam); [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code,uint mapType); public static IntPtr KeyData(int code,bool released){ long value=1|((long)MapVirtualKey((uint)code,0)<<16); if(released)value|=(1L<<30)|(1L<<31); return new IntPtr(value); } }';$target=Get-Process -Name '${safeName}' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1;if(-not $target){throw 'Aplikacja ${safeName} nie jest uruchomiona'};$codes=@(${codeList});foreach($code in $codes){if(-not [DeckBackground]::PostMessage($target.MainWindowHandle,0x0100,[IntPtr]$code,[DeckBackground]::KeyData($code,$false))){throw 'Nie udało się wysłać skrótu do ${safeName}'}};Start-Sleep -Milliseconds 55;[array]::Reverse($codes);foreach($code in $codes){[DeckBackground]::PostMessage($target.MainWindowHandle,0x0101,[IntPtr]$code,[DeckBackground]::KeyData($code,$true))|Out-Null}`;
+  await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 5000 });
+}
+
 async function pressMediaKey(name) {
   const code = virtualKeys[name];
   if (!code) throw new Error(`Nieobsługiwany klawisz multimedialny: ${name}`);
@@ -79,6 +87,9 @@ export async function executeAction(action, context) {
       return {};
     case "processHotkey":
       await pressProcessHotkey(action.process, action.keys ?? []);
+      return {};
+    case "backgroundProcessHotkey":
+      await pressBackgroundProcessHotkey(action.process, action.keys ?? []);
       return {};
     case "microphoneMute":
       return toggleMicrophoneMute();

@@ -64,7 +64,7 @@ P8 Lite nie oferuje sprzętowego bypassu, który całkowicie odłącza baterię 
 
 ## Akcje i dźwięk
 
-Obsługiwane typy akcji to `hotkey`, `processHotkey`, `microphoneMute`, `media`, `launch`, `command`, `sequence` i `page`. `processHotkey` na chwilę aktywuje wskazany proces, wysyła skrót i przywraca poprzednie okno. `microphoneMute` steruje domyślnym wejściem Windows przez Core Audio, a kafel pokazuje jego rzeczywisty stan nawet po zmianie wykonanej poza EndoDeck.
+Obsługiwane typy akcji to `hotkey`, `processHotkey`, `backgroundProcessHotkey`, `microphoneMute`, `media`, `launch`, `command`, `sequence` i `page`. `processHotkey` na chwilę aktywuje wskazany proces, natomiast `backgroundProcessHotkey` wysyła komunikaty klawiatury bezpośrednio do jego okna bez uruchamiania, pokazywania ani przełączania fokusu. `microphoneMute` steruje domyślnym wejściem Windows przez Core Audio, a kafel pokazuje jego rzeczywisty stan nawet po zmianie wykonanej poza EndoDeck.
 
 Kafle programów mogą mieć źródło stanu `process`, dlatego Discord i Spotify podświetlają się tylko wtedy, gdy odpowiadający proces faktycznie działa. Stan natywnego mute/deafen wewnątrz klienta Discord nie jest wystawiany przez Windows; przycisk mikrofonu używa więc systemowego mute, które jest mierzalne i skutecznie odcina mikrofon we wszystkich aplikacjach.
 

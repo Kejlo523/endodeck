@@ -50,11 +50,11 @@
         {
           "id": "discord-deafen",
           "label": "WYCISZENIE",
-          "hint": "Discord · globalnie",
+          "hint": "Discord · bez fokusu",
           "icon": "headset",
           "tone": "red",
           "action": {
-            "type": "processHotkey",
+            "type": "backgroundProcessHotkey",
             "process": "Discord",
             "keys": [
               "CTRL",

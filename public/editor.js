@@ -47,7 +47,7 @@ function chooseIcon(name) {
 
 function actionValues(action) {
   if (action.type === "hotkey") return [(action.keys ?? []).join(" + "), ""];
-  if (action.type === "processHotkey") return [action.process ?? "", (action.keys ?? []).join(" + ")];
+  if (["processHotkey", "backgroundProcessHotkey"].includes(action.type)) return [action.process ?? "", (action.keys ?? []).join(" + ")];
   if (action.type === "media") return [action.key ?? "", ""];
   if (action.type === "page") return [action.page ?? "", ""];
   if (action.type === "sequence") return ["", JSON.stringify(action.actions ?? [], null, 2)];
@@ -58,7 +58,7 @@ function actionValues(action) {
 function updateActionFields() {
   const type = $("#tile-type").value;
   const labels = {
-    hotkey: ["Klawisze", "np. CTRL + SHIFT + P", false], processHotkey: ["Proces i skrót", "Discord", true], launch: ["Program lub URL", "C:\\Program Files\\...", true],
+    hotkey: ["Klawisze", "np. CTRL + SHIFT + P", false], processHotkey: ["Proces i skrót", "Discord", true], backgroundProcessHotkey: ["Proces bez przełączania okna", "Discord", true], launch: ["Program lub URL", "C:\\Program Files\\...", true],
     command: ["Polecenie", "powershell.exe", true], media: ["Klawisz multimedia", "playPause", false], page: ["Nazwa strony", "home", false],
     sequence: ["Sekwencja JSON", "", true], microphoneMute: ["Mikrofon systemowy", "Stan jest odczytywany na żywo z Windows", false]
   };
@@ -91,7 +91,7 @@ function buildAction() {
   const detail = $("#action-detail")?.value.trim() ?? "";
   if (type === "microphoneMute") return { type };
   if (type === "hotkey") return { type, keys: primary.split(/[+,\s]+/).filter(Boolean).map((key) => key.toUpperCase()) };
-  if (type === "processHotkey") return { type, process: primary, keys: detail.split(/[+,\s]+/).filter(Boolean).map((key) => key.toUpperCase()) };
+  if (["processHotkey", "backgroundProcessHotkey"].includes(type)) return { type, process: primary, keys: detail.split(/[+,\s]+/).filter(Boolean).map((key) => key.toUpperCase()) };
   if (type === "media") return { type, key: primary };
   if (type === "page") return { type, page: primary };
   if (type === "sequence") return { type, actions: JSON.parse(detail || "[]") };
