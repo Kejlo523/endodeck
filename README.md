@@ -49,7 +49,7 @@ Automatyczny start razem z Windows:
 
 Gotowe paczki znajdują się w `dist`:
 
-- `EndoDeck-Power-Guard-Magisk.zip` monitoruje hosta i zasilanie USB. Przy wyłączonym PC, ale obecnym zasilaniu, utrzymuje lokalny wygaszacz i Wi-Fi pogodowe; po faktycznym odpięciu wyłącza radia, a po 45 sekundach wygasza ekran i wymusza deep idle.
+- `EndoDeck-Power-Guard-Magisk.zip` monitoruje hosta i zasilanie USB. Utrzymuje baterię w zakresie 65–75%, zatrzymując samo ładowanie bez rozłączania USB. Przy wyłączonym PC, ale obecnym zasilaniu, utrzymuje lokalny wygaszacz i Wi-Fi pogodowe; po faktycznym odpięciu przywraca ładowanie na następne podłączenie, wyłącza radia, a po 45 sekundach wymusza deep idle.
 - `EndoDeck-Touch-Wake-Magisk.zip` włącza sprzętowe double-tap-to-wake Huawei i wyłącza ekran blokady.
 
 Instalacja obu paczek przez ADB i Magisk:
@@ -58,7 +58,9 @@ Instalacja obu paczek przez ADB i Magisk:
 .\scripts\install-magisk.ps1
 ```
 
-Po instalacji wymagany jest restart telefonu. Czas do uśpienia i zachowanie trybu samolotowego można zmienić w `magisk/endodeck-power-guard/config.conf`, a następnie ponownie zbudować i zainstalować moduł.
+Po instalacji wymagany jest restart telefonu. Czas do uśpienia, zachowanie trybu samolotowego oraz progi `BATTERY_GUARD_START_PERCENT` i `BATTERY_GUARD_STOP_PERCENT` można zmienić w `magisk/endodeck-power-guard/config.conf`, a następnie ponownie zbudować i zainstalować moduł.
+
+P8 Lite nie oferuje sprzętowego bypassu, który całkowicie odłącza baterię od toru zasilania. Battery Guard korzysta z kontrolki układu Huawei `hi6521_charger`: zatrzymuje ładowanie przy górnym progu, pozostawiając USB i telefon aktywne, a następnie wznawia je przy dolnym progu. Nie używa ryzykownego przełącznika `BATFET`.
 
 ## Akcje i dźwięk
 

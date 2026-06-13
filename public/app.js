@@ -230,7 +230,7 @@ function screensaverBrightness(weather, offline = false) {
   const today = weather?.daily?.find((day) => day.date === date) ?? weather?.daily?.[0];
   const sunrise = eventMinute(today?.sunrise);
   const sunset = eventMinute(today?.sunset);
-  const levels = offline ? { night: .052, day: .060, twilight: .068 } : { night: .062, day: .070, twilight: .078 };
+  const levels = offline ? { night: .052, day: .072, twilight: .080 } : { night: .062, day: .082, twilight: .090 };
   if (sunrise === null || sunset === null) return levels.night;
   if (Math.abs(minute - sunrise) <= 45 || Math.abs(minute - sunset) <= 45) return levels.twilight;
   return minute > sunrise && minute < sunset ? levels.day : levels.night;

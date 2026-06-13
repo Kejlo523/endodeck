@@ -6,6 +6,7 @@ MODDIR=${0%/*}
 USB_STATE=/sys/class/android_usb/android0/state
 LOG=/data/local/tmp/endodeck-power.log
 PIDFILE=/data/local/tmp/endodeck-power.pid
+CHARGER_ENABLE=/sys/class/hw_power/charger/charge_data/enable_charger
 
 # Old Magisk releases may reap long-running module scripts after late_start.
 # Detach a dedicated worker so USB monitoring survives the boot stage.
@@ -56,6 +57,41 @@ has_external_power() {
     dumpsys battery 2>/dev/null | grep -qE '(AC|USB|Wireless) powered: true'
 }
 
+set_charging() {
+    value=$1
+    label=$2
+    if [ ! -e "$CHARGER_ENABLE" ]; then return; fi
+    if echo "$value" > "$CHARGER_ENABLE" 2>/dev/null; then
+        charge_state=$label
+        log_line "Battery guard: charging $label at ${battery_percent}%"
+    else
+        log_line "Battery guard: charger control write failed"
+    fi
+}
+
+manage_charging() {
+    if [ "$BATTERY_GUARD_ENABLED" != "1" ] || ! has_external_power; then return; fi
+    battery_percent=$(cat /sys/class/power_supply/Battery/capacity 2>/dev/null)
+    case "$battery_percent" in ''|*[!0-9]*) return ;; esac
+
+    if [ "$battery_percent" -ge "$BATTERY_GUARD_STOP_PERCENT" ] && [ "$charge_state" != "paused" ]; then
+        set_charging 0 paused
+    elif [ "$battery_percent" -le "$BATTERY_GUARD_START_PERCENT" ] && [ "$charge_state" != "enabled" ]; then
+        set_charging 1 enabled
+    elif [ "$charge_state" = "unknown" ]; then
+        charge_state=enabled
+    fi
+}
+
+restore_charging() {
+    if [ "$BATTERY_GUARD_ENABLED" = "1" ] && [ -e "$CHARGER_ENABLE" ]; then
+        battery_percent=$(cat /sys/class/power_supply/Battery/capacity 2>/dev/null)
+        echo 1 > "$CHARGER_ENABLE" 2>/dev/null
+        charge_state=enabled
+        log_line "Battery guard: charging restored for unplugged state"
+    fi
+}
+
 wake_deck() {
     dumpsys deviceidle unforce >/dev/null 2>&1
     settings put global stay_on_while_plugged_in 2
@@ -93,9 +129,11 @@ deck_radios
 last_state=unknown
 disconnected_at=0
 sleep_applied=0
+charge_state=unknown
 
 while true; do
     usb_state=$(cat "$USB_STATE" 2>/dev/null)
+    manage_charging
 
     if [ "$usb_state" = "CONFIGURED" ]; then
         disconnected_at=0
@@ -115,6 +153,7 @@ while true; do
         fi
     else
         if [ "$last_state" != "disconnected" ]; then
+            restore_charging
             radios_off
             disconnected_at=$(date +%s)
             sleep_applied=0

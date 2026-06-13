@@ -1,6 +1,6 @@
 id=endodeck_power_guard
 name=EndoDeck Power Guard
-version=1.1.0
-versionCode=110
+version=1.2.0
+versionCode=120
 author=Kejlo523 / Codex
-description=Powered offline screensaver, weather Wi-Fi and unplugged deep sleep profile for EndoDeck.
+description=Battery charge guard, powered offline screensaver, weather Wi-Fi and unplugged deep sleep for EndoDeck.
