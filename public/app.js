@@ -227,7 +227,7 @@ function showScreensaver() {
   burnInTimer = setInterval(rotateScreensaver, 60_000);
   screensaver.classList.remove("hidden");
   screensaver.setAttribute("aria-hidden", "false");
-  setDeckBrightness(.055);
+  setDeckBrightness(.062);
   loadWeather();
 }
 function resetIdle() {
