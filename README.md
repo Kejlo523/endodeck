@@ -17,6 +17,7 @@ Lokalny Stream Deck z telefonu Huawei P8 Lite, sterowany przez USB i `adb revers
 - godziny wschodu i zachodu dla całego tygodnia oraz autonomiczne odświeżanie pogody przez Wi-Fi po wyłączeniu PC
 - moduły Magisk do uśpienia po odłączeniu, wyłączenia radia, DT2W i usunięcia blokady
 - dwuczęściowa obudowa P8 Lite gotowa do druku 3D
+- kafle Tuya Cloud do sterowania włącznikami Wi-Fi z rzeczywistym stanem urządzeń
 
 ## Uruchomienie
 
@@ -73,6 +74,12 @@ Kafle programów mogą mieć źródło stanu `process`, dlatego Discord i Spotif
 Mikser używa Windows Core Audio. Pokazuje poziom systemowy oraz aplikacje mające aktywną sesję dźwięku. Aplikacja pojawi się po rozpoczęciu odtwarzania lub wygenerowaniu dźwięku.
 
 Wartość mA pochodzi z czujnika baterii telefonu. Jest najlepszym dostępnym przybliżeniem bilansu energii, ale P8 Lite nie udostępnia osobnego czujnika prądu wejściowego USB.
+
+## Tuya
+
+Skopiuj `tuya.local.json.example` jako `tuya.local.json` i wpisz dane projektu Tuya Cloud oraz urządzenia. Dla Polski używany jest endpoint `https://openapi.tuyaeu.com`. Plik lokalny jest ignorowany przez Git, więc Access Secret i identyfikatory urządzeń nie trafią do repozytorium.
+
+Każde urządzenie otrzymuje krótki alias, na przykład `salon`. W Studio wybierz akcję `Tuya: przełącz urządzenie` i wpisz ten alias. Kafel automatycznie dostanie źródło stanu Tuya i będzie podświetlony tylko wtedy, gdy odpowiedni kod przełącznika, domyślnie `switch_1`, ma wartość `true`.
 
 Telefon zapisuje ostatnią poprawną prognozę w pamięci aplikacji, dlatego pogoda pozostaje dostępna również po utracie połączenia z serwerem. Lokalny wygaszacz może dodatkowo odświeżać Open-Meteo bezpośrednio przez Wi-Fi co 15 minut. Zegar i reguły jasności noc/dzień/wschód/zachód są przeliczane lokalnie i nie wymagają działającego PC. Ustawienia dostępne bezpośrednio na decku są celowo ograniczone do koloru akcentu i czasów bezczynności; pełna edycja kafelków pozostaje w Studio PC.
 

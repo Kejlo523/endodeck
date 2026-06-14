@@ -9,6 +9,7 @@ import { getWeather } from "./weather.js";
 import { getControlStates } from "./control-status.js";
 import { getNowPlaying } from "./now-playing.js";
 import { reversePlace, searchPlaces } from "./geocode.js";
+import { getTuyaSetup } from "./tuya.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
@@ -114,6 +115,9 @@ const server = createServer(async (request, response) => {
     }
     if (request.method === "GET" && url.pathname === "/api/nowplaying") {
       return sendJson(response, 200, await getNowPlaying());
+    }
+    if (request.method === "GET" && url.pathname === "/api/tuya") {
+      return sendJson(response, 200, await getTuyaSetup());
     }
     if (request.method === "POST" && url.pathname === "/api/audio") {
       const body = await bodyJson(request);

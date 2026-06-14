@@ -2,6 +2,7 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { toggleMicrophoneMute, toggleProcessMute } from "./audio.js";
+import { toggleTuyaDevice } from "./tuya.js";
 
 const execFileAsync = promisify(execFile);
 const sendKeysScript = fileURLToPath(new URL("../scripts/send-keys.ps1", import.meta.url));
@@ -116,6 +117,8 @@ export async function executeAction(action, context) {
       return toggleMicrophoneMute();
     case "processAudioMute":
       return toggleProcessMute(action.process);
+    case "tuyaToggle":
+      return toggleTuyaDevice(action.device);
     case "launch": {
       const child = spawn(action.command, action.args ?? [], { detached: true, stdio: "ignore", windowsHide: false });
       child.unref();

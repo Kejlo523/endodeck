@@ -1,0 +1,12 @@
+{
+  "endpoint": "https://openapi.tuyaeu.com",
+  "accessId": "TUYA_CLOUD_ACCESS_ID",
+  "accessSecret": "TUYA_CLOUD_ACCESS_SECRET",
+  "devices": {
+    "salon": {
+      "name": "Światło salon",
+      "id": "TUYA_DEVICE_ID",
+      "switchCode": "switch_1"
+    }
+  }
+}
