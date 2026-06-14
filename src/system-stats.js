@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import { cpus, freemem, totalmem } from "node:os";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
+const cpuTemperatureScript = fileURLToPath(new URL("../scripts/cpu-temperature.ps1", import.meta.url));
 let previousCpu = cpuTimes();
 let cpuTemperatureCache = { at: 0, value: null };
 
@@ -25,9 +27,8 @@ function cpuUsage() {
 
 async function cpuTemperature() {
   if (Date.now() - cpuTemperatureCache.at < 60_000) return cpuTemperatureCache.value;
-  const script = "$s=Get-CimInstance -Namespace root\\LibreHardwareMonitor -ClassName Sensor -ErrorAction SilentlyContinue|Where-Object{$_.SensorType -eq 'Temperature' -and $_.Identifier -match '/cpu/' -and $_.Name -match 'Package|Core Average'}|Sort-Object Value -Descending|Select-Object -First 1;if($s){[math]::Round($s.Value)}";
   try {
-    const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 2500 });
+    const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-File", cpuTemperatureScript], { windowsHide: true, timeout: 3500 });
     const value = Number(stdout.trim());
     cpuTemperatureCache = { at: Date.now(), value: Number.isFinite(value) && value > 0 ? value : null };
   } catch { cpuTemperatureCache = { at: Date.now(), value: null }; }

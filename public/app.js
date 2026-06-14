@@ -360,9 +360,17 @@ function gibibytes(bytes) {
 }
 
 const metricRingCircumference = 100.53;
+const netRingCap = 100 * 1024 * 1024;
+
 function setMetricRing(selector, value) {
   const numeric = Number(value);
   const percent = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
+  $(selector).style.strokeDashoffset = String(metricRingCircumference * (1 - percent / 100));
+}
+
+function setNetRing(selector, bytes) {
+  const value = Number(bytes) || 0;
+  const percent = Math.min(100, (value / netRingCap) * 100);
   $(selector).style.strokeDashoffset = String(metricRingCircumference * (1 - percent / 100));
 }
 
@@ -380,6 +388,8 @@ function renderSystemStats(stats) {
   setMetricRing("#metric-cpu-ring", cpuUsage);
   setMetricRing("#metric-gpu-ring", gpuUsage);
   setMetricRing("#metric-ram-ring", ramUsage);
+  setNetRing("#metric-net-down-ring", stats.network?.received);
+  setNetRing("#metric-net-up-ring", stats.network?.sent);
   $("#metric-net-down").textContent = `↓ ${dataRate(stats.network?.received)}`;
   $("#metric-net-up").textContent = `↑ ${dataRate(stats.network?.sent)}`;
 }

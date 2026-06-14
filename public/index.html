@@ -78,7 +78,20 @@
           </span>
           <span class="metric-copy"><small>RAM</small><b id="metric-ram-used">-- GB</b></span>
         </div>
-        <div class="metric-network"><strong id="metric-net-down">↓ --</strong><span id="metric-net-up">↑ --</span></div>
+        <div class="metric-network-group">
+          <div class="metric-item">
+            <span class="metric-ring metric-net-down">
+              <svg viewBox="0 0 42 42" aria-hidden="true"><circle class="ring-track" cx="21" cy="21" r="16"></circle><circle class="ring-value" id="metric-net-down-ring" cx="21" cy="21" r="16"></circle></svg>
+              <strong id="metric-net-down">↓ --</strong>
+            </span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-ring metric-net-up">
+              <svg viewBox="0 0 42 42" aria-hidden="true"><circle class="ring-track" cx="21" cy="21" r="16"></circle><circle class="ring-value" id="metric-net-up-ring" cx="21" cy="21" r="16"></circle></svg>
+              <strong id="metric-net-up">↑ --</strong>
+            </span>
+          </div>
+        </div>
       </section>
       <div class="forecast" id="forecast"></div>
       <div class="saver-now-playing hidden" id="saver-now-playing" aria-hidden="true">
