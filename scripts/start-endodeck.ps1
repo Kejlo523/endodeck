@@ -2,6 +2,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $pidFile = Join-Path $root '.endodeck.pid'
 $logFile = Join-Path $root 'endodeck.log'
+$svvFetch = Join-Path $PSScriptRoot 'fetch-soundvolumeview.ps1'
+if ((Test-Path $svvFetch) -and -not (Test-Path (Join-Path $PSScriptRoot 'SoundVolumeView.exe'))) {
+    & $svvFetch
+}
 
 if (Test-Path $pidFile) {
     $oldPid = Get-Content $pidFile -ErrorAction SilentlyContinue

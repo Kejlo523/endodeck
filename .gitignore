@@ -17,5 +17,7 @@ Thumbs.db
 
 # Local dependencies and temporary output
 node_modules/
+scripts/SoundVolumeView.exe
+scripts/nircmd.exe
 *.tmp
 *.bak

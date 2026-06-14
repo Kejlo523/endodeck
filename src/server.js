@@ -4,7 +4,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { executeAction } from "./actions.js";
 import { AdbBridge } from "./adb.js";
-import { getAudioSnapshot, setMasterVolume, setSessionVolume } from "./audio.js";
+import { getAudioSnapshot, getOutputDevices, setDefaultOutputDevice, setMasterVolume, setSessionVolume } from "./audio.js";
 import { getWeather } from "./weather.js";
 import { getControlStates } from "./control-status.js";
 import { getNowPlaying } from "./now-playing.js";
@@ -114,6 +114,9 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/audio") {
       return sendJson(response, 200, await getAudioSnapshot());
     }
+    if (request.method === "GET" && url.pathname === "/api/audio/devices") {
+      return sendJson(response, 200, await getOutputDevices());
+    }
     if (request.method === "GET" && url.pathname === "/api/nowplaying") {
       return sendJson(response, 200, await getNowPlaying());
     }
@@ -134,6 +137,13 @@ const server = createServer(async (request, response) => {
       else if (body.target === "session" && Number.isInteger(Number(body.id))) await setSessionVolume(Number(body.id), volume);
       else return sendJson(response, 400, { ok: false, error: "Nieprawidłowy kanał audio" });
       return sendJson(response, 200, { ok: true, volume });
+    }
+    if (request.method === "POST" && url.pathname === "/api/audio/devices") {
+      const body = await bodyJson(request);
+      const deviceId = String(body.deviceId ?? "").trim();
+      if (!deviceId) return sendJson(response, 400, { ok: false, error: "Nie wybrano urządzenia" });
+      await setDefaultOutputDevice(deviceId);
+      return sendJson(response, 200, { ok: true });
     }
     if (request.method === "GET" && url.pathname === "/api/events") {
       response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });

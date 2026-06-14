@@ -4,6 +4,8 @@ const $ = (selector) => document.querySelector(selector);
 const grid = $("#button-grid");
 const toast = $("#toast");
 const settingsPanel = $("#settings-panel");
+const sourcePanel = $("#source-panel");
+const sourceList = $("#source-list");
 const settingsForm = $("#settings-form");
 const screensaver = $("#screensaver");
 const fields = {
@@ -75,6 +77,7 @@ function createDeckButton(button) {
 
 function render(pageName) {
   clearInterval(audioRefreshTimer);
+  closeSourceDialog();
   const page = config.pages[pageName] ?? config.pages.home;
   currentPage = pageName in config.pages ? pageName : "home";
   $("#page-label").textContent = page.label;
@@ -129,6 +132,79 @@ async function loadMixer(board) {
   } catch (error) { board.innerHTML = `<div class="mixer-empty">${error.message}</div>`; }
 }
 
+function createSourceTile(button) {
+  const element = document.createElement("div");
+  element.className = `deck-button tone-${button.tone ?? "neutral"} source-tile`;
+  element.dataset.id = button.id;
+  element.setAttribute("role", "button");
+  element.setAttribute("aria-label", `${button.label} ${button.hint ?? ""}`.trim());
+  element.innerHTML = `<span class="tile-number">${String(button.position ?? "").padStart(2, "0")}</span><span class="icon">${iconSvg(button.icon)}</span><span class="tile-copy"><strong>${button.label}</strong><small>${button.hint ?? ""}</small></span>`;
+  element.addEventListener("pointerdown", () => element.classList.add("pressed"));
+  element.addEventListener("pointerup", () => element.classList.remove("pressed"));
+  element.addEventListener("pointerleave", () => element.classList.remove("pressed"));
+  element.addEventListener("pointercancel", () => element.classList.remove("pressed"));
+  element.addEventListener("click", () => {
+    navigator.vibrate?.(12);
+    openSourceDialog();
+  });
+  return element;
+}
+
+function openSourceDialog() {
+  sourcePanel.classList.remove("hidden");
+  sourcePanel.setAttribute("aria-hidden", "false");
+  loadAudioSources();
+}
+
+function closeSourceDialog() {
+  sourcePanel.classList.add("hidden");
+  sourcePanel.setAttribute("aria-hidden", "true");
+}
+
+async function loadAudioSources() {
+  sourceList.innerHTML = '<div class="source-empty">ŁADUJĘ URZĄDZENIA…</div>';
+  try {
+    const response = await fetch("/api/audio/devices", { cache: "no-store" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Nie udało się pobrać urządzeń audio");
+    if (sourcePanel.classList.contains("hidden")) return;
+    if (!data.devices?.length) {
+      sourceList.innerHTML = '<div class="source-empty">Brak aktywnych wyjść audio</div>';
+      return;
+    }
+    sourceList.replaceChildren(...data.devices.map((device) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = `source-option${device.isDefault ? " is-active" : ""}`;
+      const dot = document.createElement("span");
+      dot.className = "source-dot";
+      const name = document.createElement("span");
+      name.className = "source-name";
+      name.textContent = device.name;
+      option.append(dot, name);
+      option.addEventListener("click", () => selectAudioSource(device.id));
+      return option;
+    }));
+  } catch (error) {
+    sourceList.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "source-empty";
+    empty.textContent = error.message;
+    sourceList.append(empty);
+  }
+}
+
+async function selectAudioSource(deviceId) {
+  try {
+    const response = await fetch("/api/audio/devices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Nie udało się zmienić źródła audio");
+    navigator.vibrate?.(24);
+    showToast("Źródło audio ustawione");
+    loadAudioSources();
+  } catch (error) { showErrorOnce(error.message); }
+}
+
 function renderMixer(page) {
   grid.className = "button-grid audio-grid";
   grid.classList.add("page-entering");
@@ -137,11 +213,20 @@ function renderMixer(page) {
   board.innerHTML = '<div class="mixer-loading">ODCZYTUJĘ MIKSER WINDOWS…</div>';
   const actions = document.createElement("aside");
   actions.className = "mixer-actions";
-  actions.append(...page.buttons.map((button, index) => createDeckButton({ ...button, position: index + 1 })));
+  const backButton = page.buttons.at(-1);
+  const sourceButton = page.buttons.at(-2);
+  const mediaButtons = page.buttons.slice(0, -2);
+  actions.append(
+    ...mediaButtons.map((button, index) => createDeckButton({ ...button, position: index + 1 })),
+    createSourceTile({ ...sourceButton, position: mediaButtons.length + 1 }),
+    createDeckButton({ ...backButton, position: mediaButtons.length + 2 })
+  );
   grid.replaceChildren(board, actions);
   loadMixer(board);
   applyControlStates();
-  audioRefreshTimer = setInterval(() => { if (!document.querySelector(".mixer-range:active")) loadMixer(board); }, 7000);
+  audioRefreshTimer = setInterval(() => {
+    if (!document.querySelector(".mixer-range:active")) loadMixer(board);
+  }, 7000);
 }
 
 async function trigger(button, element) {
@@ -192,6 +277,7 @@ settingsForm.addEventListener("submit", async (event) => {
 });
 
 $("#settings-trigger").addEventListener("click", openSettings); $("#settings-close").addEventListener("click", closeSettings);
+$("#source-close").addEventListener("click", closeSourceDialog);
 
 function nowPlayingEnabled() { return config?.ui?.showNowPlaying !== false; }
 function equalizerEnabled() { return config?.ui?.showEqualizer !== false; }

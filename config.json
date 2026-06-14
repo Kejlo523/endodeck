@@ -3,8 +3,8 @@
   "title": "ENDO DECK",
   "accent": "#ddc2ff",
   "ui": {
-    "dimAfterSeconds": 20,
-    "screensaverAfterSeconds": 30
+    "dimAfterSeconds": 90,
+    "screensaverAfterSeconds": 300
   },
   "weather": {
     "city": "Szczecin",
@@ -133,14 +133,14 @@
           }
         },
         {
-          "id": "explorer",
-          "label": "PLIKI",
-          "hint": "Explorer",
-          "icon": "folder",
-          "tone": "neutral",
+          "id": "automation-page-home",
+          "label": "AUTOMATY",
+          "hint": "Makra i system",
+          "icon": "automation",
+          "tone": "blue",
           "action": {
-            "type": "launch",
-            "command": "explorer.exe"
+            "type": "page",
+            "page": "automation"
           }
         },
         {
@@ -289,20 +289,6 @@
                   "Discord.exe"
                 ]
               }
-            ]
-          }
-        },
-        {
-          "id": "endodeck-project",
-          "label": "ENDO DECK",
-          "hint": "Otwórz projekt",
-          "icon": "code",
-          "tone": "green",
-          "action": {
-            "type": "launch",
-            "command": "C:\\Users\\Kejlo\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
-            "args": [
-              "C:\\Users\\Kejlo\\Desktop\\download\\endodeck"
             ]
           }
         },
@@ -492,14 +478,13 @@
           }
         },
         {
-          "id": "automation-page-audio",
-          "label": "AUTOMATY",
-          "hint": "Makra i system",
-          "icon": "automation",
+          "id": "audio-source",
+          "label": "WYBIERZ ŹRÓDŁO",
+          "hint": "Z komputera",
+          "icon": "headphones",
           "tone": "blue",
           "action": {
-            "type": "page",
-            "page": "automation"
+            "type": "audioSource"
           }
         },
         {

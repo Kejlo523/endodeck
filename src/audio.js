@@ -9,13 +9,23 @@ async function run(args) {
   const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath, ...args], {
     windowsHide: true,
     timeout: 10_000,
-    maxBuffer: 1024 * 1024
+    maxBuffer: 1024 * 1024,
+    encoding: "buffer"
   });
-  return JSON.parse(stdout.trim() || "{}");
+  const text = Buffer.isBuffer(stdout) ? stdout.toString("utf8") : String(stdout);
+  return JSON.parse(text.replace(/^\uFEFF/, "").trim() || "{}");
 }
 
 export function getAudioSnapshot() {
   return run(["-Action", "list"]);
+}
+
+export function getOutputDevices() {
+  return run(["-Action", "devices"]);
+}
+
+export function setDefaultOutputDevice(deviceId) {
+  return run(["-Action", "set-default", "-DeviceId", String(deviceId)]);
 }
 
 export function setMasterVolume(volume) {

@@ -134,6 +134,8 @@ export async function executeAction(action, context) {
         await new Promise((resolve) => setTimeout(resolve, action.delay ?? 180));
       }
       return {};
+    case "audioSource":
+      return {};
     default:
       throw new Error(`Nieznany typ akcji: ${action.type}`);
   }
