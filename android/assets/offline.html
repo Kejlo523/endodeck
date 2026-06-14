@@ -53,15 +53,33 @@
     .sun-times span:last-child{color:#9583c7}
     .cache-empty{grid-column:1/3;min-height:78px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;color:var(--muted);font:10px Consolas,monospace}
     .saver footer{position:absolute;z-index:2;left:50%;bottom:8px;transform:translateX(calc(-50% + var(--burn-x)));color:#555b53;font:8px Consolas,monospace;letter-spacing:.16em;white-space:nowrap;transition:transform 90s cubic-bezier(.4,0,.2,1)}
-    .offline-switches{width:min(720px,92vw);display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;padding-top:12px;border-top:1px solid var(--line)}
-    .offline-switches.hidden{display:none}
-    .offline-switch{min-height:64px;padding:8px 10px;display:grid;align-content:center;gap:4px;border:1px solid var(--line);border-radius:12px;background:#0b0e0b;color:var(--ink);text-align:left;font:inherit}
-    .offline-switch.is-on{border-color:color-mix(in srgb,var(--switch-tone) 58%,transparent);background:color-mix(in srgb,var(--switch-tone) 12%,#0b0e0b);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--switch-tone) 14%,transparent)}
-    .offline-switch strong{font-size:11px;letter-spacing:.08em;font-weight:600}
-    .offline-switch small{color:var(--muted);font:8px/1.4 Consolas,monospace}
-    .offline-switch:disabled{opacity:.55}
+    .offline-panel{min-width:0;width:min(820px,92vw);padding:13px;border:1px solid rgba(255,255,255,.075);border-radius:18px;background:linear-gradient(145deg,rgba(18,22,18,.96),rgba(8,11,8,.97));box-shadow:0 22px 55px rgba(0,0,0,.28)}
+    .offline-panel.hidden{display:none}
+    .offline-panel-head{min-height:36px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+    .offline-panel-mark{width:32px;height:32px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);border-radius:10px;color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+    .offline-panel-mark svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+    .offline-panel-title{min-width:0;display:grid;gap:2px}.offline-panel-title strong{font-size:11px;letter-spacing:.13em}.offline-panel-title small{color:var(--muted);font:8px Consolas,monospace}
+    .offline-summary{margin-left:auto;padding:5px 8px;border:1px solid var(--line);border-radius:999px;color:#90978d;font:7px Consolas,monospace;letter-spacing:.08em}
+    .offline-summary.online{color:#8ee7ad;border-color:rgba(98,228,155,.25);background:rgba(98,228,155,.07)}
+    .offline-switches{min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .offline-switch{position:relative;min-width:0;min-height:78px;padding:10px;display:grid;grid-template-columns:38px minmax(0,1fr) 8px;align-items:center;gap:9px;border:1px solid var(--line);border-radius:13px;background:#0b0e0b;color:var(--ink);text-align:left;font:inherit;overflow:hidden;transition:transform .18s ease,border-color .25s ease,background .25s ease}
+    .offline-switch::before{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--switch-tone);opacity:.15;transition:opacity .25s ease}
+    .offline-switch:active{transform:scale(.975)}
+    .offline-switch.is-on{border-color:color-mix(in srgb,var(--switch-tone) 48%,transparent);background:color-mix(in srgb,var(--switch-tone) 10%,#0b0e0b)}
+    .offline-switch.is-on::before{opacity:.8}
+    .switch-icon{width:38px;height:38px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.07);border-radius:11px;color:#777e75;background:#111511;transition:color .25s ease,background .25s ease}
+    .switch-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .is-on .switch-icon{color:var(--switch-tone);background:color-mix(in srgb,var(--switch-tone) 10%,#111511)}
+    .switch-copy{min-width:0;display:grid;gap:4px}.offline-switch strong{font-size:11px;letter-spacing:.06em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.offline-switch small{color:var(--muted);font:8px/1.3 Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .switch-led{width:7px;height:7px;border-radius:50%;background:#414640;box-shadow:0 0 0 3px rgba(255,255,255,.025)}.is-on .switch-led{background:var(--switch-tone);box-shadow:0 0 11px color-mix(in srgb,var(--switch-tone) 70%,transparent)}
+    .offline-switch.is-busy .switch-icon{color:var(--switch-tone);animation:busyPulse .85s ease-in-out infinite}.offline-switch.has-error{border-color:rgba(255,102,99,.28)}.offline-switch.has-error .switch-led{background:#ff6663}.offline-switch:disabled{opacity:.82}
+    @keyframes busyPulse{50%{opacity:.4;transform:scale(.88)}}
     @keyframes breathe{50%{opacity:.42;transform:translateY(4px)}}
     @media(max-height:430px){
+      .notice{display:grid;grid-template-columns:minmax(180px,.62fr) minmax(0,1.38fr);align-items:center;gap:14px;padding:14px 18px}
+      .shell{min-width:0;width:100%;gap:8px;text-align:left;justify-items:start}.cable{width:38px;height:38px}.shell h1{font-size:14px;line-height:1.15}.shell p{font-size:7px}.shell .status{margin-top:3px;font-size:7px}
+      .offline-panel{width:100%;padding:8px;border-radius:14px}.offline-panel-head{min-height:28px;margin-bottom:7px;gap:7px}.offline-panel-mark{width:27px;height:27px;border-radius:8px}.offline-panel-title strong{font-size:8px}.offline-panel-title small{font-size:6px}.offline-summary{padding:4px 6px;font-size:5.5px}
+      .offline-switches{gap:5px}.offline-switch{min-height:60px;padding:6px;grid-template-columns:30px minmax(0,1fr) 6px;gap:5px;border-radius:10px}.switch-icon{width:30px;height:30px;border-radius:8px}.switch-icon svg{width:15px;height:15px}.offline-switch strong{font-size:8px}.offline-switch small{font-size:6px}.switch-led{width:6px;height:6px}
       .saver-main{padding:30px 5vw 20px;gap:6px 4vw}
       #saver-clock{font-size:102px}
       #saver-date{margin-top:9px;font-size:10px}
@@ -88,7 +106,14 @@
       <p>EndoDeck czeka na serwer przez USB.<br>Panel wróci automatycznie po wykryciu komputera.</p>
       <div class="status"><span class="dot"></span> HOST PC OFFLINE</div>
     </main>
-    <nav class="offline-switches hidden" id="offline-switches" aria-label="Przełączniki Tapo"></nav>
+    <section class="offline-panel hidden" id="offline-panel">
+      <header class="offline-panel-head">
+        <span class="offline-panel-mark"><svg viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8 16a5.5 5.5 0 0 1 8 0M12 20h.01"/></svg></span>
+        <span class="offline-panel-title"><strong>STEROWANIE LOKALNE</strong><small>Tapo bezpośrednio przez domowe Wi-Fi</small></span>
+        <span class="offline-summary" id="offline-summary">ŁĄCZENIE</span>
+      </header>
+      <nav class="offline-switches" id="offline-switches" aria-label="Przełączniki Tapo"></nav>
+    </section>
   </section>
 
   <section class="saver" id="saver">
@@ -116,13 +141,16 @@
   <script>
     const notice = document.querySelector("#notice");
     const saver = document.querySelector("#saver");
+    const offlinePanel = document.querySelector("#offline-panel");
     const offlineSwitches = document.querySelector("#offline-switches");
+    const offlineSummary = document.querySelector("#offline-summary");
     let noticeTimer;
     let burnInTimer;
     let cachedWeather;
     let offlineBundle = null;
     let switchStates = {};
-    let switchBusy = false;
+    const busySwitches = new Set();
+    const switchTimers = new Map();
 
     const toneMap = { accent:"#b7f34a", green:"#62e49b", red:"#ff6663", blue:"#58b9ff", amber:"#ffc15c", violet:"#9f8dff", neutral:"#a7ada4" };
 
@@ -243,75 +271,83 @@
 
     function renderOfflineSwitches() {
       if (!offlineBundle?.ready || !offlineBundle.switches?.length) {
-        offlineSwitches.classList.add("hidden");
+        offlinePanel.classList.add("hidden");
         offlineSwitches.replaceChildren();
         return;
       }
-      offlineSwitches.classList.remove("hidden");
+      offlinePanel.classList.remove("hidden");
+      const available = offlineBundle.switches.filter((entry) => switchStates[entry.alias]?.available).length;
+      const pending = busySwitches.size;
+      offlineSummary.textContent = pending ? `PRZEŁĄCZAM · ${pending}` : available ? `WI-FI · ${available}/${offlineBundle.switches.length}` : "ŁĄCZENIE";
+      offlineSummary.classList.toggle("online", available > 0 && !pending);
       offlineSwitches.replaceChildren(...offlineBundle.switches.map((entry) => {
+        const state = switchStates[entry.alias] || {};
+        const busy = busySwitches.has(entry.alias);
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `offline-switch${switchStates[entry.alias]?.active ? " is-on" : ""}`;
+        button.className = `offline-switch${state.active ? " is-on" : ""}${busy ? " is-busy" : ""}${state.error ? " has-error" : ""}`;
         button.style.setProperty("--switch-tone", switchTone(entry.tone));
-        button.disabled = switchBusy;
-        button.innerHTML = `<strong>${entry.label}</strong><small>${entry.hint || "Tapo · WiFi"}</small>`;
+        button.disabled = busy;
+        const detail = busy ? "Przełączam…" : state.error ? state.error : state.available ? (state.active ? "Włączone" : "Wyłączone") : "Sprawdzam połączenie…";
+        button.innerHTML = `<span class="switch-icon"><svg viewBox="0 0 24 24"><path d="M9 3v5m6-5v5M7 8h10v3a5 5 0 0 1-5 5v5m-3 0h6"/></svg></span><span class="switch-copy"><strong>${entry.label}</strong><small>${detail}</small></span><span class="switch-led"></span>`;
         button.addEventListener("click", (event) => {
           event.stopPropagation();
-          toggleOfflineSwitch(entry.alias, button);
+          toggleOfflineSwitch(entry.alias);
         });
         return button;
       }));
     }
 
     function applySwitchState(alias, state) {
-      switchStates[alias] = state;
+      switchStates[alias] = { ...switchStates[alias], ...state };
       renderOfflineSwitches();
     }
 
-    async function refreshOfflineSwitchStates() {
+    function refreshOfflineSwitchStates() {
       if (!offlineBundle?.ready) return;
       try {
-        const raw = window.NativeDeck?.getLocalDeviceStates?.();
-        if (!raw) return;
-        const states = JSON.parse(raw);
-        for (const [alias, state] of Object.entries(states)) applySwitchState(alias, state);
+        for (const entry of offlineBundle.switches) {
+          if (!switchStates[entry.alias]) switchStates[entry.alias] = { active: false, available: false };
+        }
+        renderOfflineSwitches();
+        window.NativeDeck?.refreshLocalDeviceStates?.();
       } catch {}
     }
 
-    async function toggleOfflineSwitch(alias, button) {
-      if (switchBusy) return;
-      switchBusy = true;
+    function toggleOfflineSwitch(alias) {
+      if (busySwitches.has(alias)) return;
+      const previous = switchStates[alias] || { active: false, available: false };
+      busySwitches.add(alias);
+      switchStates[alias] = { ...previous, active: !previous.active, error: null };
       renderOfflineSwitches();
+      clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(showSaver, 15000);
       try {
-        if (offlineBundle?.lanHost) {
-          try {
-            const response = await fetch(`http://${offlineBundle.lanHost}:${offlineBundle.port}/api/offline/toggle`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ alias })
-            });
-            const result = await response.json();
-            if (response.ok) {
-              applySwitchState(alias, result);
-              navigator.vibrate?.(24);
-              return;
-            }
-          } catch {}
-        }
-        const raw = window.NativeDeck?.toggleLocalDevice?.(alias);
-        if (!raw) throw new Error("Brak sterowania Tapo offline");
-        const result = JSON.parse(raw);
-        if (!result.available) throw new Error(result.error || "Nie udało się przełączyć urządzenia");
-        applySwitchState(alias, result);
-        navigator.vibrate?.(24);
-      } catch (error) {
-        button.classList.remove("is-on");
+        window.NativeDeck?.toggleLocalDeviceAsync?.(alias);
+        const timer = setTimeout(() => receiveDeviceState(JSON.stringify({ alias, kind: "toggle", active: previous.active, available: false, error: "Urządzenie nie odpowiedziało" })), 10000);
+        switchTimers.set(alias, timer);
+      } catch {
+        busySwitches.delete(alias);
+        switchStates[alias] = { ...previous, error: "Brak sterowania lokalnego" };
         navigator.vibrate?.(8);
-      } finally {
-        switchBusy = false;
         renderOfflineSwitches();
       }
     }
+
+    function receiveDeviceState(raw) {
+      try {
+        const state = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (!state?.alias) return;
+        if (busySwitches.has(state.alias) && state.kind !== "toggle") return;
+        clearTimeout(switchTimers.get(state.alias));
+        switchTimers.delete(state.alias);
+        const wasBusy = busySwitches.delete(state.alias);
+        applySwitchState(state.alias, state);
+        navigator.vibrate?.(state.available && wasBusy ? 24 : state.error ? 8 : 0);
+      } catch {}
+    }
+
+    window.EndoDeckOffline = { receiveDeviceState };
 
     function loadWeather() {
       try {
@@ -356,11 +392,11 @@
       notice.classList.remove("hidden");
       saver.classList.remove("visible");
       nativeBrightness(.22);
-      noticeTimer = setTimeout(showSaver, 4200);
+      noticeTimer = setTimeout(showSaver, 12000);
     }
 
     document.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".offline-switches")) return;
+      if (event.target.closest(".offline-panel")) return;
       showNotice();
     }, { passive: true });
     loadOfflineBundle();
@@ -373,7 +409,7 @@
     setInterval(updateClock, 1000);
     setInterval(applyBrightness, 60_000);
     setInterval(refreshWeather, 45 * 60_000);
-    setInterval(() => { loadOfflineBundle(); refreshOfflineSwitchStates(); }, 60_000);
+    setInterval(() => { loadOfflineBundle(); refreshOfflineSwitchStates(); }, 30_000);
   </script>
 </body>
 </html>

@@ -31,17 +31,21 @@ final class TapoClient {
         this.password = password;
     }
 
-    boolean getState() throws Exception {
+    synchronized boolean getState() throws Exception {
         JSONObject info = request("get_device_info", null);
         return info.optBoolean("device_on", info.optBoolean("on", false));
     }
 
-    boolean toggle() throws Exception {
+    synchronized boolean toggle() throws Exception {
         boolean current = getState();
+        return setState(!current);
+    }
+
+    synchronized boolean setState(boolean active) throws Exception {
         JSONObject params = new JSONObject();
-        params.put("device_on", !current);
+        params.put("device_on", active);
         request("set_device_info", params);
-        return !current;
+        return active;
     }
 
     private JSONObject request(String method, JSONObject params) throws Exception {
@@ -105,8 +109,8 @@ final class TapoClient {
     private byte[] postRaw(String path, byte[] body, String query, boolean captureCookie) throws Exception {
         String url = "http://" + ip + "/app/" + path + (query == null ? "" : "?" + query);
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setConnectTimeout(5000);
-        connection.setReadTimeout(5000);
+        connection.setConnectTimeout(1600);
+        connection.setReadTimeout(2400);
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.setUseCaches(false);
