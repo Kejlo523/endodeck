@@ -28,6 +28,7 @@ let screensaverActive = false;
 let latestWeather;
 let suppressDeckClickUntil = 0;
 let lastShownError = null;
+const nowPlayingAnimationTimers = new WeakMap();
 
 function showToast(message, error = false) {
   clearTimeout(toastTimer);
@@ -195,23 +196,30 @@ $("#settings-trigger").addEventListener("click", openSettings); $("#settings-clo
 function nowPlayingEnabled() { return config?.ui?.showNowPlaying !== false; }
 function equalizerEnabled() { return config?.ui?.showEqualizer !== false; }
 
+function syncEqualizerActivity() {
+  const playing = Boolean(latestState.nowPlaying?.playing) && equalizerEnabled() && !document.hidden;
+  $("#now-playing-eq").classList.toggle("playing", playing && !screensaverActive);
+  $("#saver-now-playing-eq").classList.toggle("playing", playing && screensaverActive);
+}
+
 let nowPlayingVisible = false;
 
 function animateNowPlayingBar(element, show) {
+  clearTimeout(nowPlayingAnimationTimers.get(element));
   element.classList.remove("np-entering", "np-leaving");
   if (show) {
     element.classList.remove("hidden");
     element.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => element.classList.add("np-entering"));
-    setTimeout(() => element.classList.remove("np-entering"), 520);
+    nowPlayingAnimationTimers.set(element, setTimeout(() => element.classList.remove("np-entering"), 520));
     return;
   }
   element.classList.add("np-leaving");
   element.setAttribute("aria-hidden", "true");
-  setTimeout(() => {
+  nowPlayingAnimationTimers.set(element, setTimeout(() => {
     element.classList.remove("np-leaving");
     element.classList.add("hidden");
-  }, 400);
+  }, 400));
 }
 
 function renderNowPlaying() {
@@ -224,9 +232,9 @@ function renderNowPlaying() {
     nowPlayingVisible = hasTrack;
     animateNowPlayingBar(nowPlayingBar, hasTrack);
     animateNowPlayingBar(saverNowPlaying, hasTrack);
-    screensaver.classList.toggle("has-now-playing", hasTrack);
   }
 
+  syncEqualizerActivity();
   if (!hasTrack) return;
 
   $("#now-playing-title").textContent = track.title;
@@ -238,8 +246,6 @@ function renderNowPlaying() {
   const saverEq = $("#saver-now-playing-eq");
   barEq.classList.toggle("hidden", !showEq);
   saverEq.classList.toggle("hidden", !showEq);
-  barEq.classList.toggle("playing", showEq && Boolean(track.playing));
-  saverEq.classList.toggle("playing", showEq && Boolean(track.playing));
 }
 
 function updateState(state) {
@@ -328,12 +334,11 @@ function setDeckBrightness(value) {
 }
 
 function rotateScreensaver() {
-  const phase = Math.floor(Date.now() / 120_000);
-  const positions = [[-12, -8], [10, -6], [-8, 10], [12, 8], [0, -12], [0, 12]];
+  const phase = Math.floor(Date.now() / 300_000);
+  const positions = [[-5, -3], [4, -4], [-3, 4], [5, 3], [0, -5], [-4, 2], [3, 5], [0, 0]];
   const [x, y] = positions[phase % positions.length];
   screensaver.style.setProperty("--burn-x", `${x}px`);
   screensaver.style.setProperty("--burn-y", `${y}px`);
-  screensaver.classList.toggle("layout-swapped", phase % 2 === 1);
 }
 
 function showScreensaver() {
@@ -341,9 +346,10 @@ function showScreensaver() {
   document.body.classList.remove("dimmed");
   rotateScreensaver();
   clearInterval(burnInTimer);
-  burnInTimer = setInterval(rotateScreensaver, 60_000);
+  burnInTimer = setInterval(rotateScreensaver, 300_000);
   screensaver.classList.remove("hidden");
   screensaver.setAttribute("aria-hidden", "false");
+  syncEqualizerActivity();
   setDeckBrightness(screensaverBrightness(latestWeather));
   loadWeather();
 }
@@ -351,6 +357,7 @@ function resetIdle() {
   clearTimeout(inactivityTimer); clearTimeout(screensaverTimer); clearInterval(burnInTimer);
   if (screensaverActive) setDeckBrightness(-1);
   screensaverActive = false;
+  syncEqualizerActivity();
   document.body.classList.remove("dimmed"); screensaver.classList.add("hidden"); screensaver.setAttribute("aria-hidden", "true");
   inactivityTimer = setTimeout(() => document.body.classList.add("dimmed"), Math.max(10, config.ui?.dimAfterSeconds ?? 90) * 1000);
   screensaverTimer = setTimeout(showScreensaver, Math.max(30, config.ui?.screensaverAfterSeconds ?? 300) * 1000);
@@ -381,6 +388,7 @@ async function boot() {
   document.addEventListener("touchstart", wakeFromScreensaver, { capture: true, passive: false });
   document.addEventListener("click", suppressWakeClick, { capture: true, passive: false });
   for (const event of ["pointerdown", "touchstart", "keydown"]) document.addEventListener(event, resetIdle, { passive: true });
+  document.addEventListener("visibilitychange", syncEqualizerActivity);
 }
 
 boot().catch((error) => showErrorOnce(error.message));
