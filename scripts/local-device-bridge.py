@@ -12,6 +12,10 @@ def emit(payload):
 
 def clean_error(error):
     message = str(error).strip() or error.__class__.__name__
+    if "Third-Party Compatibility" in message or 'kind: "FORBIDDEN"' in message:
+        return "Tapo blokuje sterowanie lokalne. W aplikacji Tapo wlacz: Ja > Third-Party Services > Third-Party Compatibility."
+    if "Invalid credentials" in message or "LOGIN_ERROR" in message:
+        return "Nieprawidlowy e-mail lub haslo konta Tapo."
     return message.replace("\n", " ")[:240]
 
 
