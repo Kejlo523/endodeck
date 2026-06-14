@@ -257,8 +257,36 @@ function updateState(state) {
   $("#saver-power").textContent = $("#power-status").textContent; $("#saver-battery").textContent = $("#battery-status").textContent;
   applyControlStates();
   renderNowPlaying();
+  renderSystemStats(state.systemStats);
   if (state.error) showErrorOnce(state.error);
   else lastShownError = null;
+}
+
+function dataRate(bytes) {
+  const value = Number(bytes) || 0;
+  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1)} MB/s`;
+  if (value >= 1024) return `${Math.round(value / 1024)} KB/s`;
+  return `${Math.round(value)} B/s`;
+}
+
+function gibibytes(bytes) {
+  return `${(Number(bytes || 0) / 1024 ** 3).toFixed(1)} GB`;
+}
+
+function renderSystemStats(stats) {
+  if (!stats) return;
+  $("#metric-cpu").textContent = `${stats.cpu?.usage ?? "--"}%`;
+  $("#metric-cpu-temp").textContent = stats.cpu?.temperature ? `${stats.cpu.temperature}°C` : "TEMP. —";
+  $("#metric-gpu").textContent = `${stats.gpu?.usage ?? "--"}%`;
+  $("#metric-gpu-temp").textContent = stats.gpu?.temperature ? `${stats.gpu.temperature}°C` : "TEMP. —";
+  $("#metric-ram").textContent = `${stats.memory?.usage ?? "--"}%`;
+  $("#metric-ram-used").textContent = gibibytes(stats.memory?.used);
+  $("#metric-net-down").textContent = `↓ ${dataRate(stats.network?.received)}`;
+  $("#metric-net-up").textContent = `↑ ${dataRate(stats.network?.sent)}`;
+  const project = stats.projects?.[0];
+  $("#metric-project-name").textContent = project?.name?.toUpperCase() ?? "BRAK";
+  $("#metric-project-state").textContent = project ? `${project.branch} · ${project.clean ? "CZYSTY" : `${project.dirty} ZMIANY`}` : "PROJEKTÓW";
+  $(".metric-project").classList.toggle("is-dirty", Boolean(project && !project.clean));
 }
 
 function updateClock() {

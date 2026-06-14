@@ -47,6 +47,13 @@
     <main class="saver-main">
       <div class="saver-time"><time id="saver-clock"><span id="saver-main-time">00:00</span><small id="saver-seconds">00</small></time><span id="saver-date">---</span></div>
       <div class="weather-now"><span class="weather-symbol" id="weather-symbol">·</span><strong id="weather-temp">--°</strong><div><b id="weather-city">Warszawa</b><span id="weather-description">Pobieram pogodę</span></div></div>
+      <section class="saver-telemetry" aria-label="Stan komputera">
+        <div><small>CPU</small><strong id="metric-cpu">--%</strong><span id="metric-cpu-temp">CZUJNIK —</span></div>
+        <div><small>GPU</small><strong id="metric-gpu">--%</strong><span id="metric-gpu-temp">--°C</span></div>
+        <div><small>RAM</small><strong id="metric-ram">--%</strong><span id="metric-ram-used">-- GB</span></div>
+        <div><small>SIEĆ</small><strong id="metric-net-down">↓ --</strong><span id="metric-net-up">↑ --</span></div>
+        <div class="metric-project"><small>GIT</small><strong id="metric-project-name">BRAK</strong><span id="metric-project-state">PROJEKTÓW</span></div>
+      </section>
       <div class="forecast" id="forecast"></div>
       <div class="saver-now-playing hidden" id="saver-now-playing" aria-hidden="true">
         <span class="eq saver-eq" id="saver-now-playing-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>

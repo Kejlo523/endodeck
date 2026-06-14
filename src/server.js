@@ -11,6 +11,7 @@ import { getNowPlaying } from "./now-playing.js";
 import { reversePlace, searchPlaces } from "./geocode.js";
 import { getTuyaSetup } from "./tuya.js";
 import { getLocalDeviceSetup, saveLocalDeviceSetup, testLocalDevices } from "./local-devices.js";
+import { getSystemStats } from "./system-stats.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
@@ -20,7 +21,7 @@ const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 let config = JSON.parse(await readFile(configPath, "utf8"));
 let configMtime = (await stat(configPath)).mtimeMs;
 const clients = new Set();
-const state = { adb: false, serial: null, battery: null, controls: {}, nowPlaying: null, lastAction: null, error: null };
+const state = { adb: false, serial: null, battery: null, controls: {}, nowPlaying: null, systemStats: null, lastAction: null, error: null };
 
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -206,6 +207,16 @@ setInterval(async () => {
   } catch { }
   statusPolling = false;
 }, 2200);
+
+async function refreshSystemStats() {
+  const next = await getSystemStats().catch(() => state.systemStats);
+  if (!next) return;
+  state.systemStats = next;
+  publish();
+}
+
+refreshSystemStats();
+setInterval(refreshSystemStats, 8000);
 
 process.on("SIGINT", () => {
   adb.stop();
