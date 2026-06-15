@@ -49,6 +49,19 @@ final class TapoClient {
     }
 
     private JSONObject request(String method, JSONObject params) throws Exception {
+        Exception failure = null;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                return requestOnce(method, params);
+            } catch (Exception error) {
+                failure = error;
+                resetSession();
+            }
+        }
+        throw failure == null ? new Exception("Tapo request failed") : failure;
+    }
+
+    private JSONObject requestOnce(String method, JSONObject params) throws Exception {
         if (key == null) initialize();
         JSONObject payload = new JSONObject();
         payload.put("method", method);
@@ -58,10 +71,17 @@ final class TapoClient {
         byte[] response = postRaw("request", encrypted, "seq=" + seq, false);
         JSONObject data = new JSONObject(new String(decrypt(response), "UTF-8"));
         if (data.optInt("error_code", -1) != 0) {
-            key = null;
             throw new Exception("Tapo error " + data.optInt("error_code"));
         }
         return data.optJSONObject("result") == null ? new JSONObject() : data.getJSONObject("result");
+    }
+
+    private void resetSession() {
+        key = null;
+        iv = null;
+        sig = null;
+        seq = 0;
+        sessionCookie = null;
     }
 
     private void initialize() throws Exception {

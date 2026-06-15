@@ -1,6 +1,6 @@
 id=endodeck_oem_huawei_ale_l21
 name=EndoDeck OEM Huawei ALE-L21
-version=1.1.0-beta.2
-versionCode=11002
+version=1.1.0-beta.3
+versionCode=11003
 author=Kejlo523
 description=Optional battery guard and hardware double-tap wake for Huawei P8 Lite ALE-L21 only.

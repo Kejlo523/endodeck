@@ -10,8 +10,8 @@ android {
         applicationId "pl.endozero.endodeck"
         minSdk 24
         targetSdk 30
-        versionCode 11002
-        versionName "1.1.0-beta.2"
+        versionCode 11003
+        versionName "1.1.0-beta.3"
     }
 
     flavorDimensions += "runtime"
