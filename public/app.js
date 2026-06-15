@@ -348,11 +348,16 @@ function updateState(state) {
   else lastShownError = null;
 }
 
-function dataRate(bytes) {
+function dataRateParts(bytes) {
   const value = Number(bytes) || 0;
-  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1)} MB/s`;
-  if (value >= 1024) return `${Math.round(value / 1024)} KB/s`;
-  return `${Math.round(value)} B/s`;
+  if (value >= 1024 * 1024) {
+    return {
+      value: (value / 1024 / 1024).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1),
+      unit: "MB/s"
+    };
+  }
+  if (value >= 1024) return { value: String(Math.round(value / 1024)), unit: "KB/s" };
+  return { value: String(Math.round(value)), unit: "B/s" };
 }
 
 function gibibytes(bytes) {
@@ -390,8 +395,12 @@ function renderSystemStats(stats) {
   setMetricRing("#metric-ram-ring", ramUsage);
   setNetRing("#metric-net-down-ring", stats.network?.received);
   setNetRing("#metric-net-up-ring", stats.network?.sent);
-  $("#metric-net-down").textContent = `↓ ${dataRate(stats.network?.received)}`;
-  $("#metric-net-up").textContent = `↑ ${dataRate(stats.network?.sent)}`;
+  const netDown = dataRateParts(stats.network?.received);
+  const netUp = dataRateParts(stats.network?.sent);
+  $("#metric-net-down-value").textContent = netDown.value;
+  $("#metric-net-down-unit").textContent = netDown.unit;
+  $("#metric-net-up-value").textContent = netUp.value;
+  $("#metric-net-up-unit").textContent = netUp.unit;
 }
 
 function updateClock() {
