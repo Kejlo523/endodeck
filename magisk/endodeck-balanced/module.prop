@@ -1,6 +1,6 @@
 id=endodeck_balanced
 name=EndoDeck Balanced Tweaks
-version=1.1.0-beta.1
-versionCode=11001
+version=1.1.0-beta.2
+versionCode=11002
 author=Kejlo523
 description=Optional reversible UI and idle optimizations for Android 7-11.

@@ -114,6 +114,8 @@ final class TapoClient {
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.setUseCaches(false);
+        connection.setRequestProperty("Content-Type", "application/octet-stream");
+        connection.setFixedLengthStreamingMode(body.length);
         if (sessionCookie != null) connection.setRequestProperty("Cookie", sessionCookie);
         OutputStream output = connection.getOutputStream();
         output.write(body);

@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.view.View;
 import android.view.Window;
@@ -19,6 +20,7 @@ import android.webkit.WebViewClient;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,7 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private SecureStore secureStore;
     private String sessionToken = "";
+    private long lastOfflineBundleSync;
     private final ExecutorService deviceExecutor = Executors.newFixedThreadPool(3);
     private final ConcurrentHashMap<String, TapoClient> tapoClients = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> tapoStates = new ConcurrentHashMap<>();
@@ -98,13 +101,7 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public void cacheOfflineBundle(String bundleJson) {
-            if (bundleJson == null || bundleJson.length() > 200_000) return;
-            String previous = secureStore.get("offline_bundle");
-            try { secureStore.put("offline_bundle", bundleJson); } catch (Exception ignored) { return; }
-            if (!bundleJson.equals(previous)) {
-                tapoClients.clear();
-                tapoStates.clear();
-            }
+            storeOfflineBundle(bundleJson);
         }
 
         @JavascriptInterface
@@ -195,6 +192,7 @@ public final class MainActivity extends Activity {
             String message = error.getMessage() == null ? "Blad Tapo" : error.getMessage();
             if (message.contains("timed out") || message.contains("connect")) return "Brak odpowiedzi w sieci Wi-Fi";
             if (message.contains("auth")) return "Bledne dane konta Tapo";
+            if (message.contains("HTTP 403")) return "Tapo odrzuca sterowanie lokalne";
             return message;
         }
 
@@ -219,15 +217,19 @@ public final class MainActivity extends Activity {
                 boolean available = false;
                 HttpURLConnection connection = null;
                 try {
-                    connection = (HttpURLConnection) new URL(DECK_URL + "api/health").openConnection();
+                    if (sessionToken == null || sessionToken.isEmpty()) throw new Exception("Missing session token");
+                    connection = (HttpURLConnection) new URL(DECK_URL + "api/config").openConnection();
                     connection.setConnectTimeout(650);
                     connection.setReadTimeout(650);
                     connection.setUseCaches(false);
+                    connection.setRequestProperty("Authorization", "Bearer " + sessionToken);
                     available = connection.getResponseCode() == 200;
                 } catch (Exception ignored) {
                 } finally {
                     if (connection != null) connection.disconnect();
                 }
+
+                if (available) refreshOfflineBundle();
 
                 final boolean serverAvailable = available;
                 handler.post(() -> {
@@ -252,13 +254,7 @@ public final class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         preferences = getSharedPreferences("endodeck", Context.MODE_PRIVATE);
         secureStore = new SecureStore(this);
-        String providedToken = getIntent().getStringExtra("endodeck_token");
-        if (providedToken != null && !providedToken.isEmpty()) {
-            sessionToken = providedToken;
-            try { secureStore.put("api_token", providedToken); } catch (Exception ignored) { }
-        } else {
-            sessionToken = secureStore.get("api_token");
-        }
+        acceptSessionToken(getIntent());
         String legacyBundle = preferences.getString("offline_bundle", "");
         if (!legacyBundle.isEmpty() && secureStore.get("offline_bundle").isEmpty()) {
             try { secureStore.put("offline_bundle", legacyBundle); preferences.edit().remove("offline_bundle").apply(); } catch (Exception ignored) { }
@@ -305,6 +301,70 @@ public final class MainActivity extends Activity {
         scheduleNextNightBoundary();
         if (nightStandby) {
             handler.postDelayed(isNightHours() ? this::enterNightStandby : this::leaveNightStandby, 1800);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        boolean tokenChanged = acceptSessionToken(intent);
+        if (tokenChanged && webView != null) {
+            deckVisible = false;
+            lastOfflineBundleSync = 0L;
+            webView.loadUrl(authenticatedDeckUrl());
+        }
+    }
+
+    private boolean acceptSessionToken(Intent intent) {
+        String providedToken = intent == null ? null : intent.getStringExtra("endodeck_token");
+        if (providedToken == null || providedToken.isEmpty()) {
+            if (sessionToken == null || sessionToken.isEmpty()) sessionToken = secureStore.get("api_token");
+            return false;
+        }
+        boolean changed = !providedToken.equals(sessionToken);
+        sessionToken = providedToken;
+        try { secureStore.put("api_token", providedToken); } catch (Exception ignored) { }
+        return changed;
+    }
+
+    private void refreshOfflineBundle() {
+        long now = System.currentTimeMillis();
+        if (now - lastOfflineBundleSync < 30_000L) return;
+        lastOfflineBundleSync = now;
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(DECK_URL + "api/offline-bundle").openConnection();
+            connection.setConnectTimeout(1200);
+            connection.setReadTimeout(2500);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Authorization", "Bearer " + sessionToken);
+            if (connection.getResponseCode() != 200) return;
+            StringBuilder body = new StringBuilder();
+            try (InputStreamReader reader = new InputStreamReader(connection.getInputStream(), "UTF-8")) {
+                char[] buffer = new char[4096];
+                int read;
+                while ((read = reader.read(buffer)) != -1) {
+                    body.append(buffer, 0, read);
+                    if (body.length() > 200_000) return;
+                }
+            }
+            new org.json.JSONObject(body.toString());
+            storeOfflineBundle(body.toString());
+        } catch (Exception error) {
+            android.util.Log.w("EndoDeckOffline", "Offline bundle sync failed", error);
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    private void storeOfflineBundle(String bundleJson) {
+        if (bundleJson == null || bundleJson.length() > 200_000) return;
+        String previous = secureStore.get("offline_bundle");
+        try { secureStore.put("offline_bundle", bundleJson); } catch (Exception ignored) { return; }
+        if (!bundleJson.equals(previous)) {
+            tapoClients.clear();
+            tapoStates.clear();
         }
     }
 
