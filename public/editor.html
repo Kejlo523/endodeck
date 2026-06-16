@@ -27,6 +27,36 @@
             <label>Wygaszacz po<input id="global-saver" type="number" min="30"><small>sekundach</small></label>
           </div>
         </section>
+        <section class="control-section">
+          <div class="section-heading"><strong>KONFIGURACJA</strong><span>Backup i przenoszenie decka</span></div>
+          <div class="config-actions">
+            <button type="button" id="export-config">EKSPORTUJ</button>
+            <button type="button" id="import-config">IMPORTUJ</button>
+            <input id="import-config-file" type="file" accept="application/json,.json" hidden>
+          </div>
+        </section>
+        <section class="control-section">
+          <div class="section-heading"><strong>WYGASZACZ</strong><span>Jasność i animacje</span></div>
+          <div class="toggle-grid">
+            <label class="check-row"><input id="show-now-playing" type="checkbox"><span>Pokazuj aktualnie odtwarzany utwór</span></label>
+            <label class="check-row"><input id="show-equalizer" type="checkbox"><span>Włącz lekki visualizer audio</span></label>
+          </div>
+          <div class="brightness-grid">
+            <label>Noc<input id="brightness-night" type="number" min="1" max="100"><small>%</small></label>
+            <label>Wschód/zachód<input id="brightness-twilight" type="number" min="1" max="100"><small>%</small></label>
+            <label>Dzień<input id="brightness-day" type="number" min="1" max="100"><small>%</small></label>
+            <label>Offline noc<input id="brightness-offline-night" type="number" min="1" max="100"><small>%</small></label>
+            <label>Offline dzień<input id="brightness-offline-day" type="number" min="1" max="100"><small>%</small></label>
+          </div>
+        </section>
+        <section class="control-section">
+          <div class="section-heading"><strong>SEN NOCNY</strong><span>Godziny uśpienia telefonu</span></div>
+          <label class="check-row"><input id="night-enabled" type="checkbox"><span>Włącz automatyczny sen, gdy PC jest niedostępny</span></label>
+          <div class="two-cols">
+            <label>Od<input id="night-start" type="time"></label>
+            <label>Do<input id="night-end" type="time"></label>
+          </div>
+        </section>
         <section class="control-section location-section">
           <div class="section-heading"><strong>POGODA</strong><span>Kliknij mapę lub wyszukaj miasto</span></div>
           <form class="place-search" id="place-search"><input id="place-query" type="search" placeholder="Wpisz miasto"><button aria-label="Szukaj">SZUKAJ</button></form>
@@ -42,6 +72,13 @@
 
     <section class="panel deck-editor">
       <header class="panel-title"><span>02</span><div><strong>UKŁAD DECKA</strong><small>Przeciągnij kafel, aby zamienić miejsca</small></div></header>
+      <div class="deck-toolbar">
+        <div class="page-create">
+          <input id="new-page-label" placeholder="Nowa strona, np. Praca">
+          <button type="button" id="add-page">DODAJ STRONĘ</button>
+        </div>
+        <button type="button" id="delete-page" class="soft-danger">USUŃ STRONĘ</button>
+      </div>
       <nav class="page-tabs" id="page-tabs"></nav>
       <div class="deck-preview" id="deck-preview"></div>
     </section>
@@ -49,6 +86,13 @@
     <aside class="panel tile-panel">
       <header class="panel-title"><span>03</span><div><strong>WYBRANY KAFEL</strong><small id="selected-id">---</small></div></header>
       <form id="tile-form" class="tile-form">
+        <section class="tile-template-box">
+          <div class="section-heading"><strong>NOWY KAFEL</strong><span>Gotowe typy i specjalne akcje</span></div>
+          <div class="template-row">
+            <select id="tile-template"></select>
+            <button type="button" id="add-tile">DODAJ</button>
+          </div>
+        </section>
         <div class="two-cols"><label>Nazwa<input id="tile-label" maxlength="22"></label><label>Opis<input id="tile-hint" maxlength="38"></label></div>
         <section class="icon-editor">
           <div class="section-heading"><strong>IKONA</strong><span id="selected-icon-name">---</span></div>
@@ -58,6 +102,7 @@
         <div class="two-cols"><label>Kolor<select id="tile-tone"><option value="accent">Akcent</option><option value="blue">Niebieski</option><option value="green">Zielony</option><option value="red">Czerwony</option><option value="amber">Bursztynowy</option><option value="violet">Fioletowy</option><option value="neutral">Szary</option></select></label><label>Typ akcji<select id="tile-type"><option value="localDeviceToggle">LAN: przełącz urządzenie</option><option value="hotkey">Skrót klawiszowy</option><option value="processHotkey">Skrót aplikacji z fokusem</option><option value="backgroundProcessHotkey">Skrót aplikacji w tle</option><option value="processAudioMute">Wycisz audio aplikacji</option><option value="microphoneMute">Mikrofon systemowy</option><option value="launch">Program / URL</option><option value="media">Multimedia</option><option value="page">Zmiana strony</option><option value="command">Polecenie</option><option value="sequence">Sekwencja JSON</option></select></label></div>
         <div id="action-fields"></div>
         <div class="order-actions"><button type="button" id="move-left">← WCZEŚNIEJ</button><button type="button" id="move-right">PÓŹNIEJ →</button></div>
+        <button type="button" id="delete-tile" class="delete-tile">USUŃ KAFEL</button>
         <button class="apply-tile" type="submit">ZASTOSUJ DO PODGLĄDU</button>
       </form>
     </aside>

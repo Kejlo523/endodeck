@@ -5,7 +5,21 @@
   "accent": "#b7f34a",
   "ui": {
     "dimAfterSeconds": 90,
-    "screensaverAfterSeconds": 300
+    "screensaverAfterSeconds": 300,
+    "showNowPlaying": true,
+    "showEqualizer": true,
+    "screensaverBrightness": {
+      "night": 6,
+      "twilight": 9,
+      "day": 13,
+      "offlineNight": 5,
+      "offlineDay": 10
+    },
+    "nightStandby": {
+      "enabled": true,
+      "start": "00:00",
+      "end": "07:00"
+    }
   },
   "weather": {
     "city": "Warszawa",
@@ -27,17 +41,17 @@
     "home": {
       "label": "Codzienny",
       "buttons": [
-        { "id": "discord", "label": "DISCORD", "hint": "Uruchom", "icon": "discord", "tone": "violet", "action": { "type": "launch", "command": "discord" }, "status": { "type": "process", "process": "Discord" } },
-        { "id": "microphone", "label": "MIKROFON", "hint": "Windows", "icon": "microphone-slash", "tone": "red", "action": { "type": "microphoneMute" }, "status": { "type": "microphoneMute" } },
-        { "id": "discord-audio", "label": "WYCISZENIE", "hint": "Discord", "icon": "headset", "tone": "red", "action": { "type": "processAudioMute", "process": "Discord" }, "status": { "type": "processAudioMute", "process": "Discord" } },
-        { "id": "spotify", "label": "SPOTIFY", "hint": "Uruchom", "icon": "spotify", "tone": "green", "action": { "type": "launch", "command": "spotify" }, "status": { "type": "process", "process": "Spotify" } },
+        { "id": "microphone", "label": "MIKROFON", "hint": "Wycisz systemowo", "icon": "microphone-slash", "tone": "red", "action": { "type": "microphoneMute" }, "status": { "type": "microphoneMute" } },
+        { "id": "volume-mute", "label": "WYCISZ", "hint": "Audio Windows", "icon": "volumeMute", "tone": "red", "action": { "type": "media", "key": "volumeMute" } },
         { "id": "volume-down", "label": "CISZEJ", "hint": "Windows", "icon": "volumeDown", "tone": "blue", "action": { "type": "media", "key": "volumeDown" } },
         { "id": "volume-up", "label": "GŁOŚNIEJ", "hint": "Windows", "icon": "volumeUp", "tone": "blue", "action": { "type": "media", "key": "volumeUp" } },
         { "id": "media-play", "label": "PLAY / PAUZA", "hint": "Media", "icon": "play", "tone": "green", "action": { "type": "media", "key": "playPause" } },
         { "id": "media-next", "label": "NASTĘPNY", "hint": "Media", "icon": "next", "tone": "green", "action": { "type": "media", "key": "next" } },
-        { "id": "codex", "label": "CODEX", "hint": "AI pair dev", "icon": "laptop-code", "tone": "accent", "action": { "type": "launch", "command": "wt.exe", "args": ["-d", "C:\\Users\\Kejlo\\Desktop\\download", "codex"] } },
+        { "id": "browser", "label": "PRZEGLĄDARKA", "hint": "Domyślna", "icon": "browser", "tone": "blue", "action": { "type": "launch", "command": "https://www.google.com" } },
         { "id": "files", "label": "PLIKI", "hint": "Eksplorator", "icon": "folder-open", "tone": "amber", "action": { "type": "launch", "command": "explorer.exe" } },
         { "id": "screenshot", "label": "ZRZUT", "hint": "Win + Shift + S", "icon": "crop-simple", "tone": "blue", "action": { "type": "hotkey", "keys": ["WIN", "SHIFT", "S"] } },
+        { "id": "codex", "label": "CODEX", "hint": "Terminal AI", "icon": "laptop-code", "tone": "accent", "action": { "type": "launch", "command": "wt.exe", "args": ["codex"] } },
+        { "id": "discord-audio", "label": "DISCORD MUTE", "hint": "Proces Discord", "icon": "discord", "tone": "violet", "action": { "type": "processAudioMute", "process": "Discord" }, "status": { "type": "processAudioMute", "process": "Discord" } },
         { "id": "audio", "label": "MIKSER", "hint": "Audio", "icon": "sliders", "tone": "accent", "action": { "type": "page", "page": "audio" } }
       ]
     },

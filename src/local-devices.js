@@ -1,7 +1,7 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { dataPath, projectRoot } from "./runtime-paths.js";
-import { getSecret, setSecret } from "./secret-store.js";
+import { getSecret, hasSecret, setSecret } from "./secret-store.js";
 import { TapoClient } from "./tapo-client.js";
 
 const settingsPath = dataPath("devices.json");
@@ -75,7 +75,7 @@ function publicDevice(alias, device, configured) {
 
 export async function getLocalDeviceSetup() {
   const settings = await loadSettings();
-  const hasPassword = Boolean(await getSecret("tapo.password"));
+  const hasPassword = await hasSecret("tapo.password");
   const configured = Boolean(settings.tapo.username && hasPassword);
   return {
     tapo: { username: settings.tapo.username, hasPassword },

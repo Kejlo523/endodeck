@@ -59,6 +59,10 @@ export async function getSecret(name) {
   return unprotect((await loadStore())[name]);
 }
 
+export async function hasSecret(name) {
+  return Boolean((await loadStore())[name]);
+}
+
 export async function setSecret(name, value) {
   const store = await loadStore();
   if (!value) delete store[name];

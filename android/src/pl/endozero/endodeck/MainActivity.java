@@ -43,7 +43,11 @@ public final class MainActivity extends Activity {
     private final ConcurrentHashMap<String, TapoClient> tapoClients = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> tapoStates = new ConcurrentHashMap<>();
     private static final String NIGHT_MARKER = "/data/local/tmp/endodeck-night-standby";
-    private static final int NIGHT_STANDBY_END_HOUR = 7;
+    private static final int DEFAULT_NIGHT_START_MINUTE = 0;
+    private static final int DEFAULT_NIGHT_END_MINUTE = 7 * 60;
+    private boolean nightStandbyEnabled = true;
+    private int nightStandbyStartMinute = DEFAULT_NIGHT_START_MINUTE;
+    private int nightStandbyEndMinute = DEFAULT_NIGHT_END_MINUTE;
 
     private final Runnable nightBoundary = new Runnable() {
         @Override
@@ -260,6 +264,7 @@ public final class MainActivity extends Activity {
             try { secureStore.put("offline_bundle", legacyBundle); preferences.edit().remove("offline_bundle").apply(); } catch (Exception ignored) { }
         }
         nightStandby = preferences.getBoolean("night_standby", false);
+        loadPowerSchedule();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
@@ -362,14 +367,59 @@ public final class MainActivity extends Activity {
         if (bundleJson == null || bundleJson.length() > 200_000) return;
         String previous = secureStore.get("offline_bundle");
         try { secureStore.put("offline_bundle", bundleJson); } catch (Exception ignored) { return; }
+        applyPowerSchedule(bundleJson);
         if (!bundleJson.equals(previous)) {
             tapoClients.clear();
             tapoStates.clear();
         }
     }
 
+    private int minuteOfDay() {
+        Calendar now = Calendar.getInstance();
+        return now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+    }
+
+    private int parseMinute(String value, int fallback) {
+        try {
+            String[] parts = String.valueOf(value).split(":");
+            int hour = Math.max(0, Math.min(23, Integer.parseInt(parts[0])));
+            int minute = parts.length > 1 ? Math.max(0, Math.min(59, Integer.parseInt(parts[1]))) : 0;
+            return hour * 60 + minute;
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private void loadPowerSchedule() {
+        nightStandbyEnabled = preferences.getBoolean("night_standby_enabled", true);
+        nightStandbyStartMinute = preferences.getInt("night_standby_start_minute", DEFAULT_NIGHT_START_MINUTE);
+        nightStandbyEndMinute = preferences.getInt("night_standby_end_minute", DEFAULT_NIGHT_END_MINUTE);
+    }
+
+    private void applyPowerSchedule(String bundleJson) {
+        try {
+            org.json.JSONObject ui = new org.json.JSONObject(bundleJson).optJSONObject("ui");
+            org.json.JSONObject standby = ui == null ? null : ui.optJSONObject("nightStandby");
+            if (standby == null) return;
+            nightStandbyEnabled = standby.optBoolean("enabled", true);
+            nightStandbyStartMinute = parseMinute(standby.optString("start", "00:00"), DEFAULT_NIGHT_START_MINUTE);
+            nightStandbyEndMinute = parseMinute(standby.optString("end", "07:00"), DEFAULT_NIGHT_END_MINUTE);
+            preferences.edit()
+                .putBoolean("night_standby_enabled", nightStandbyEnabled)
+                .putInt("night_standby_start_minute", nightStandbyStartMinute)
+                .putInt("night_standby_end_minute", nightStandbyEndMinute)
+                .apply();
+            scheduleNextNightBoundary();
+        } catch (Exception ignored) { }
+    }
+
     private boolean isNightHours() {
-        return Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < NIGHT_STANDBY_END_HOUR;
+        if (!nightStandbyEnabled || nightStandbyStartMinute == nightStandbyEndMinute) return false;
+        int minute = minuteOfDay();
+        if (nightStandbyStartMinute < nightStandbyEndMinute) {
+            return minute >= nightStandbyStartMinute && minute < nightStandbyEndMinute;
+        }
+        return minute >= nightStandbyStartMinute || minute < nightStandbyEndMinute;
     }
 
     private String authenticatedDeckUrl() {
@@ -380,17 +430,19 @@ public final class MainActivity extends Activity {
 
     private void scheduleNextNightBoundary() {
         handler.removeCallbacks(nightBoundary);
+        if (!nightStandbyEnabled) return;
+        Calendar next = nextBoundary(isNightHours() ? nightStandbyEndMinute : nightStandbyStartMinute);
+        handler.postDelayed(nightBoundary, Math.max(1000L, next.getTimeInMillis() - System.currentTimeMillis()));
+    }
+
+    private Calendar nextBoundary(int minute) {
         Calendar next = Calendar.getInstance();
-        if (isNightHours()) {
-            next.set(Calendar.HOUR_OF_DAY, NIGHT_STANDBY_END_HOUR);
-        } else {
-            next.add(Calendar.DAY_OF_YEAR, 1);
-            next.set(Calendar.HOUR_OF_DAY, 0);
-        }
-        next.set(Calendar.MINUTE, 0);
+        next.set(Calendar.HOUR_OF_DAY, minute / 60);
+        next.set(Calendar.MINUTE, minute % 60);
         next.set(Calendar.SECOND, 0);
         next.set(Calendar.MILLISECOND, 0);
-        handler.postDelayed(nightBoundary, Math.max(1000L, next.getTimeInMillis() - System.currentTimeMillis()));
+        if (next.getTimeInMillis() <= System.currentTimeMillis()) next.add(Calendar.DAY_OF_YEAR, 1);
+        return next;
     }
 
     private void enterNightStandby() {

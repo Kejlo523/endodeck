@@ -258,6 +258,7 @@ settingsForm.addEventListener("submit", async (event) => {
   try {
     config.accent = fields.accent.value;
     config.ui = {
+      ...(config.ui ?? {}),
       dimAfterSeconds: Math.max(10, Number(fields.dim.value) || 90),
       screensaverAfterSeconds: Math.max(30, Number(fields.saver.value) || 300),
       showNowPlaying: fields.nowPlaying.checked,
@@ -384,10 +385,11 @@ function renderSystemStats(stats) {
   const cpuUsage = stats.cpu?.usage;
   const gpuUsage = stats.gpu?.usage;
   const ramUsage = stats.memory?.usage;
+  $("#metric-gpu-card").classList.toggle("hidden", !stats.gpu);
   $("#metric-cpu").textContent = `${cpuUsage ?? "--"}%`;
   $("#metric-cpu-temp").textContent = stats.cpu?.temperature ? `${stats.cpu.temperature}°C` : "—";
   $("#metric-gpu").textContent = `${gpuUsage ?? "--"}%`;
-  $("#metric-gpu-temp").textContent = stats.gpu?.temperature ? `${stats.gpu.temperature}°C` : "—";
+  $("#metric-gpu-temp").textContent = stats.gpu?.temperature ? `${stats.gpu.temperature}°C` : (stats.gpu?.name ? "OK" : "—");
   $("#metric-ram").textContent = `${ramUsage ?? "--"}%`;
   $("#metric-ram-used").textContent = gibibytes(stats.memory?.used);
   setMetricRing("#metric-cpu-ring", cpuUsage);
@@ -458,12 +460,20 @@ function eventMinute(value) {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
+function brightnessPercent(value, fallback) {
+  const numeric = Number(value);
+  return Math.max(.01, Math.min(1, (Number.isFinite(numeric) ? numeric : fallback) / 100));
+}
+
 function screensaverBrightness(weather, offline = false) {
   const { date, minute } = cityTime(weather);
   const today = weather?.daily?.find((day) => day.date === date) ?? weather?.daily?.[0];
   const sunrise = eventMinute(today?.sunrise);
   const sunset = eventMinute(today?.sunset);
-  const levels = offline ? { night: .052, day: .094, twilight: .080 } : { night: .062, day: .106, twilight: .090 };
+  const brightness = config?.ui?.screensaverBrightness ?? {};
+  const levels = offline
+    ? { night: brightnessPercent(brightness.offlineNight, 5), day: brightnessPercent(brightness.offlineDay, 10), twilight: brightnessPercent(brightness.twilight, 9) }
+    : { night: brightnessPercent(brightness.night, 6), day: brightnessPercent(brightness.day, 13), twilight: brightnessPercent(brightness.twilight, 9) };
   if (sunrise === null || sunset === null) return levels.night;
   if (Math.abs(minute - sunrise) <= 45 || Math.abs(minute - sunset) <= 45) return levels.twilight;
   return minute > sunrise && minute < sunset ? levels.day : levels.night;

@@ -10,8 +10,11 @@ CTL=/system/bin/endodeckctl
 [ -f "$OPTIONS" ] && . "$OPTIONS"
 : "${DISCONNECT_SLEEP_SECONDS:=45}"
 : "${POWERED_OFFLINE_SCREENSAVER:=1}"
+: "${NIGHT_STANDBY_ENABLED:=1}"
 : "${NIGHT_STANDBY_START_HOUR:=0}"
 : "${NIGHT_STANDBY_END_HOUR:=7}"
+: "${NIGHT_STANDBY_START_MINUTE:=$((NIGHT_STANDBY_START_HOUR * 60))}"
+: "${NIGHT_STANDBY_END_MINUTE:=$((NIGHT_STANDBY_END_HOUR * 60))}"
 
 if [ "$1" != "--worker" ]; then
     if [ -f "$PIDFILE" ]; then old=$(cat "$PIDFILE" 2>/dev/null); [ -n "$old" ] && kill -0 "$old" 2>/dev/null && exit 0; fi
@@ -50,9 +53,19 @@ external_power() {
 }
 
 night_active() {
+    [ "$NIGHT_STANDBY_ENABLED" = "1" ] || return 1
     hour=$(date '+%H' | sed 's/^0//')
-    case "$hour" in ''|*[!0-9]*) return 1 ;; esac
-    [ "$hour" -ge "$NIGHT_STANDBY_START_HOUR" ] && [ "$hour" -lt "$NIGHT_STANDBY_END_HOUR" ]
+    minute=$(date '+%M' | sed 's/^0//')
+    [ -z "$hour" ] && hour=0
+    [ -z "$minute" ] && minute=0
+    case "$hour:$minute:$NIGHT_STANDBY_START_MINUTE:$NIGHT_STANDBY_END_MINUTE" in *[!0-9:]*|*::* ) return 1 ;; esac
+    [ "$NIGHT_STANDBY_START_MINUTE" -eq "$NIGHT_STANDBY_END_MINUTE" ] && return 1
+    current=$((hour * 60 + minute))
+    if [ "$NIGHT_STANDBY_START_MINUTE" -lt "$NIGHT_STANDBY_END_MINUTE" ]; then
+        [ "$current" -ge "$NIGHT_STANDBY_START_MINUTE" ] && [ "$current" -lt "$NIGHT_STANDBY_END_MINUTE" ]
+    else
+        [ "$current" -ge "$NIGHT_STANDBY_START_MINUTE" ] || [ "$current" -lt "$NIGHT_STANDBY_END_MINUTE" ]
+    fi
 }
 
 last=unknown

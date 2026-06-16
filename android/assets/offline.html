@@ -175,8 +175,16 @@
       return match ? Number(match[1]) * 60 + Number(match[2]) : null;
     }
 
+    function brightnessPercent(value, fallback) {
+      const numeric = Number(value);
+      return Math.max(.01, Math.min(1, (Number.isFinite(numeric) ? numeric : fallback) / 100));
+    }
+
     function saverBrightness(weather) {
-      const NIGHT = .01, TWILIGHT = .042, DAY = .082;
+      const settings = offlineBundle?.ui?.screensaverBrightness || {};
+      const NIGHT = brightnessPercent(settings.offlineNight ?? settings.night, 5);
+      const TWILIGHT = brightnessPercent(settings.twilight, 9);
+      const DAY = brightnessPercent(settings.offlineDay ?? settings.day, 10);
       const local = cityTime(weather);
       const today = weather?.daily?.find((day) => day.date === local.date) ?? weather?.daily?.[0];
       const sunrise = eventMinute(today?.sunrise);

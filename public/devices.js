@@ -102,6 +102,35 @@ async function save() {
   finally { button.disabled = false; }
 }
 
+async function savePasswordOnly() {
+  const button = $("#save-password");
+  button.disabled = true;
+  try {
+    const username = $("#tapo-user").value.trim();
+    const password = $("#tapo-password").value;
+    if (!username) throw new Error("Podaj e-mail konta Tapo");
+    if (!password && !setup.tapo.hasPassword) throw new Error("Podaj hasło do zapisania");
+    const devices = Object.fromEntries(setup.devices.map((device) => [device.alias, {
+      name: device.name,
+      ip: device.ip,
+      provider: device.provider ?? "tapo",
+      model: device.model ?? "P100"
+    }]));
+    const response = await fetch("/api/local-devices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tapo: { username, password }, devices })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || "Nie udało się zapisać hasła");
+    setup = await response.json();
+    $("#tapo-password").value = "";
+    $("#password-state").textContent = setup.tapo.hasPassword ? "Hasło jest zapisane lokalnie" : "Brak zapisanego hasła";
+    renderDevices();
+    notify("Hasło zapisane i gotowe do testowania połączenia");
+  } catch (error) { notify(error.message, true); }
+  finally { button.disabled = false; }
+}
+
 async function testDevices() {
   const button = $("#test-devices");
   button.disabled = true;
@@ -118,6 +147,7 @@ async function testDevices() {
 }
 
 $("#save-devices").addEventListener("click", save);
+$("#save-password").addEventListener("click", savePasswordOnly);
 $("#test-devices").addEventListener("click", testDevices);
 $("#add-device").addEventListener("click", () => {
   const index = setup.devices.length + 1;

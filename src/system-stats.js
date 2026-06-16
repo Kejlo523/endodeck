@@ -39,7 +39,36 @@ async function gpuStats() {
   try {
     const { stdout } = await execFileAsync("nvidia-smi.exe", ["--query-gpu=temperature.gpu,utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"], { windowsHide: true, timeout: 3000 });
     const [temperature, usage, memoryUsed, memoryTotal] = stdout.trim().split(",").map((value) => Number(value.trim()));
-    return { temperature, usage, memoryUsed, memoryTotal };
+    return { name: "NVIDIA GPU", provider: "nvidia-smi", temperature, usage, memoryUsed, memoryTotal };
+  } catch {}
+
+  const script = `
+    $gpu = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -and $_.Name -notmatch 'Microsoft Basic|Remote' } |
+      Select-Object -First 1
+    if (-not $gpu) { return }
+    $samples = (Get-Counter '\\GPU Engine(*)\\Utilization Percentage' -ErrorAction SilentlyContinue).CounterSamples |
+      Where-Object { $_.Path -match 'engtype_(3d|compute|graphics)' }
+    $usage = [Math]::Min(100, [Math]::Round((($samples | Measure-Object CookedValue -Sum).Sum)))
+    [pscustomobject]@{
+      name = $gpu.Name
+      usage = $usage
+      memoryTotal = [int64]$gpu.AdapterRAM
+      provider = 'windows-performance'
+    } | ConvertTo-Json -Compress
+  `;
+  try {
+    const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, timeout: 4500 });
+    const parsed = stdout.trim() ? JSON.parse(stdout) : null;
+    if (!parsed?.name || !Number.isFinite(Number(parsed.usage))) return null;
+    return {
+      name: parsed.name,
+      provider: parsed.provider,
+      temperature: null,
+      usage: Math.max(0, Math.min(100, Number(parsed.usage))),
+      memoryUsed: null,
+      memoryTotal: Number(parsed.memoryTotal) || null
+    };
   } catch { return null; }
 }
 

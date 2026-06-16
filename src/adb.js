@@ -41,6 +41,14 @@ function versionAtLeast(value, minimumMajor, minimumMinor = 0) {
   return major > minimumMajor || (major === minimumMajor && minor >= minimumMinor);
 }
 
+function parseScheduleMinute(value, fallback) {
+  const match = String(value ?? "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return fallback;
+  const hour = Math.min(23, Math.max(0, Number(match[1])));
+  const minute = Math.min(59, Math.max(0, Number(match[2])));
+  return hour * 60 + minute;
+}
+
 export class AdbBridge {
   constructor({ port, token, getConfig, saveConfig, onState }) {
     this.port = port;
@@ -178,12 +186,19 @@ export class AdbBridge {
     const diagnosis = await this.pair(serial);
     await this.installApk(serial, diagnosis.profile.apkVariant);
     await this.shell(serial, "su -c 'for old in endodeck_power_guard endodeck_touch_wake p8_battery_tweaks; do [ -d /data/adb/modules/$old ] && touch /data/adb/modules/$old/remove; done'").catch(() => {});
+    const config = await this.getConfig().catch(() => ({}));
+    const nightStandby = config.ui?.nightStandby ?? {};
+    const startMinute = parseScheduleMinute(nightStandby.start, 0);
+    const endMinute = parseScheduleMinute(nightStandby.end, 7 * 60);
     const optionLines = [
       `ENABLE_LOCKSCREEN_BYPASS=${options.lockscreenBypass ? 1 : 0}`,
       `ENABLE_DT2W=${options.doubleTapWake ? 1 : 0}`,
       `ENABLE_BATTERY_GUARD=${options.batteryGuard ? 1 : 0}`,
-      `NIGHT_STANDBY_START_HOUR=0`,
-      `NIGHT_STANDBY_END_HOUR=7`
+      `NIGHT_STANDBY_ENABLED=${nightStandby.enabled === false ? 0 : 1}`,
+      `NIGHT_STANDBY_START_MINUTE=${startMinute}`,
+      `NIGHT_STANDBY_END_MINUTE=${endMinute}`,
+      `NIGHT_STANDBY_START_HOUR=${Math.floor(startMinute / 60)}`,
+      `NIGHT_STANDBY_END_HOUR=${Math.floor(endMinute / 60)}`
     ].join("\\n");
     await this.shell(serial, `su -c 'mkdir -p /data/adb/endodeck; printf "${optionLines}\\n" > /data/adb/endodeck/options.conf'`);
     const moduleFiles = {

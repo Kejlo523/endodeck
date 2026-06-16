@@ -16,6 +16,31 @@ function migrate(config) {
   const next = structuredClone(config ?? {});
   next.schemaVersion = CURRENT_SCHEMA;
   next.port = Number(next.port) || 8765;
+  next.accent = typeof next.accent === "string" ? next.accent : "#b7f34a";
+  next.title = typeof next.title === "string" ? next.title : "ENDO DECK";
+  next.ui = {
+    dimAfterSeconds: 90,
+    screensaverAfterSeconds: 300,
+    showNowPlaying: true,
+    showEqualizer: true,
+    screensaverBrightness: { night: 6, twilight: 9, day: 13, offlineNight: 5, offlineDay: 10 },
+    nightStandby: { enabled: true, start: "00:00", end: "07:00" },
+    ...(next.ui ?? {})
+  };
+  next.ui.screensaverBrightness = {
+    night: 6,
+    twilight: 9,
+    day: 13,
+    offlineNight: 5,
+    offlineDay: 10,
+    ...(next.ui.screensaverBrightness ?? {})
+  };
+  next.ui.nightStandby = {
+    enabled: true,
+    start: "00:00",
+    end: "07:00",
+    ...(next.ui.nightStandby ?? {})
+  };
   next.device = { serial: null, profile: "generic", apkVariant: "universal", modulesPending: false, ...(next.device ?? {}) };
   next.updates = { channel: "beta", automaticDesktop: true, automaticApk: true, ...(next.updates ?? {}) };
   return next;

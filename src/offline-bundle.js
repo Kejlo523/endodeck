@@ -56,6 +56,10 @@ export async function buildOfflineBundle(config) {
     ready: switches.length > 0,
     lanHost: getLanHost(),
     port: Number(config.port) || 8765,
+    ui: {
+      screensaverBrightness: config.ui?.screensaverBrightness ?? null,
+      nightStandby: config.ui?.nightStandby ?? null
+    },
     switches,
     tapo: configured ? { username: settings.tapo.username, password: settings.tapo.password } : null,
     devices

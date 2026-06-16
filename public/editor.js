@@ -6,12 +6,17 @@ let pageName = "home";
 let tileIndex = 0;
 let selectedIcon = "wand-magic-sparkles";
 let localDeviceSetup = { devices: [] };
+let installedApps = [];
 let map;
 let marker;
 let toastTimer;
 let draggedTileIndex = null;
 
 const toneLabels = { accent: "Akcent", blue: "Niebieski", green: "Zielony", red: "Czerwony", amber: "Bursztynowy", violet: "Fioletowy", neutral: "Szary" };
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+}
 
 function notify(message, error = false) {
   clearTimeout(toastTimer);
@@ -22,6 +27,26 @@ function notify(message, error = false) {
 
 function currentPage() { return config.pages[pageName]; }
 function currentTile() { return currentPage().buttons[tileIndex]; }
+
+function slug(value, fallback = "page") {
+  const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return (normalized || fallback).slice(0, 48);
+}
+
+function uniqueId(base) {
+  const existing = new Set(Object.values(config.pages ?? {}).flatMap((page) => (page.buttons ?? []).map((button) => button.id)));
+  let candidate = slug(base, "tile");
+  let index = 2;
+  while (existing.has(candidate)) candidate = `${slug(base, "tile")}-${index++}`;
+  return candidate;
+}
+
+function uniquePageId(label) {
+  let candidate = slug(label, "page");
+  let index = 2;
+  while (config.pages[candidate]) candidate = `${slug(label, "page")}-${index++}`;
+  return candidate;
+}
 
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
@@ -73,10 +98,39 @@ function renderTabs() {
   }));
 }
 
+function renderTemplates() {
+  const options = [
+    ["blank", "Pusty kafel"],
+    ["mic", "Specjalny: mikrofon Windows"],
+    ["discord-audio", "Specjalny: wycisz Discord"],
+    ["mixer", "Specjalny: mikser audio"],
+    ["play", "Media: play / pauza"],
+    ["next", "Media: następny utwór"],
+    ["screenshot", "Windows: zrzut ekranu"],
+    ["codex", "Dev: Codex"],
+    ["app", "Program z listy Windows"]
+  ];
+  if (localDeviceSetup.devices?.length) options.push(["local-device", "LAN: pierwsze urządzenie Tapo"]);
+  $("#tile-template").replaceChildren(...options.map(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    return option;
+  }));
+}
+
 function renderPreview() {
   const preview = $("#deck-preview");
+  const buttons = currentPage().buttons ?? [];
   preview.classList.toggle("mixer-preview", currentPage().layout === "mixer");
-  preview.replaceChildren(...currentPage().buttons.map((tile, index) => {
+  if (!buttons.length) {
+    const empty = document.createElement("section");
+    empty.className = "preview-empty";
+    empty.innerHTML = "<strong>TA STRONA JEST PUSTA</strong><span>Dodaj kafel z panelu po prawej. Możesz zacząć od kafla specjalnego, aplikacji Windows albo skrótu klawiszowego.</span>";
+    preview.replaceChildren(empty);
+    return;
+  }
+  preview.replaceChildren(...buttons.map((tile, index) => {
     const button = document.createElement("button"); button.type = "button"; button.className = `preview-tile tone-${tile.tone ?? "neutral"}${index === tileIndex ? " selected" : ""}`;
     button.draggable = true;
     button.dataset.index = String(index);
@@ -128,6 +182,47 @@ function actionValues(action) {
   return [action.command ?? "", JSON.stringify(action.args ?? [])];
 }
 
+function setTileFormEnabled(enabled) {
+  for (const selector of ["#tile-label", "#tile-hint", "#tile-tone", "#tile-type", "#move-left", "#move-right", "#delete-tile", ".apply-tile"]) {
+    const element = $(selector);
+    if (element) element.disabled = !enabled;
+  }
+}
+
+function matchesApp(app, query) {
+  const haystack = `${app.name} ${app.command} ${(app.args ?? []).join(" ")}`.toLowerCase();
+  return query.split(/\s+/).filter(Boolean).every((part) => haystack.includes(part));
+}
+
+function selectApp(app) {
+  $("#action-primary").value = app.command;
+  $("#action-detail").value = JSON.stringify(app.args ?? []);
+  $("#tile-label").value = app.name.slice(0, 22).toUpperCase();
+  $("#tile-hint").value = "Aplikacja Windows";
+  chooseIcon("launch");
+  renderAppChoices();
+}
+
+function renderAppChoices() {
+  const list = $("#app-list");
+  if (!list) return;
+  const query = ($("#app-search")?.value ?? "").trim().toLowerCase();
+  const currentCommand = $("#action-primary")?.value ?? "";
+  const apps = installedApps.filter((app) => !query || matchesApp(app, query)).slice(0, 80);
+  if (!apps.length) {
+    list.innerHTML = '<div class="app-empty">Nie znaleziono programu. Możesz nadal wpisać ścieżkę ręcznie powyżej.</div>';
+    return;
+  }
+  list.replaceChildren(...apps.map((app) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "app-choice";
+    button.innerHTML = `<strong>${escapeHtml(app.name)}</strong><span>${app.command === currentCommand ? "WYBRANE" : "UŻYJ"}</span><small>${escapeHtml(app.command)} ${escapeHtml((app.args ?? []).join(" "))}</small>`;
+    button.addEventListener("click", () => selectApp(app));
+    return button;
+  }));
+}
+
 function updateActionFields() {
   const type = $("#tile-type").value;
   const labels = {
@@ -145,8 +240,15 @@ function updateActionFields() {
     return;
   }
   if (type === "localDeviceToggle") {
-    const options = localDeviceSetup.devices.map((device) => `<option value="${device.alias}">${device.name} · ${device.ip}${device.configured ? "" : " · wymaga konfiguracji"}</option>`).join("");
-    $("#action-fields").innerHTML = `<label>${label}<select id="action-primary">${options}</select></label><div class="action-note">Sterowanie bezpośrednio w LAN. Dane dostępowe ustawisz na stronie <a href="/devices.html">Urządzenia LAN</a>.</div>`;
+    const options = localDeviceSetup.devices.map((device) => `<option value="${escapeHtml(device.alias)}">${escapeHtml(device.name)} · ${escapeHtml(device.ip)}${device.configured ? "" : " · wymaga konfiguracji"}</option>`).join("");
+    $("#action-fields").innerHTML = `<label>${label}<select id="action-primary">${options || '<option value="">Brak urządzeń LAN</option>'}</select></label><div class="action-note">Sterowanie bezpośrednio w LAN. Dane dostępowe ustawisz na stronie <a href="/devices.html">Urządzenia LAN</a>.</div>`;
+    return;
+  }
+  if (type === "launch") {
+    $("#action-fields").innerHTML = `<label>${label}<input id="action-primary" placeholder="${placeholder}"></label><label>Argumenty<textarea id="action-detail" rows="3"></textarea></label><div class="app-picker-box"><div class="section-heading"><strong>APLIKACJE WINDOWS</strong><span>${installedApps.length} wykrytych skrótów</span></div><div class="app-search-row"><input id="app-search" type="search" placeholder="Szukaj programu, np. Discord, Code, Steam"><button type="button" id="clear-app-search">WYCZYŚĆ</button></div><div id="app-list" class="app-list" role="listbox"></div><div class="action-note">Wybierz program z listy, a Studio samo uzupełni ścieżkę, argumenty, nazwę kafla i ikonę.</div></div>`;
+    $("#app-search").addEventListener("input", renderAppChoices);
+    $("#clear-app-search").addEventListener("click", () => { $("#app-search").value = ""; renderAppChoices(); });
+    renderAppChoices();
     return;
   }
   $("#action-fields").innerHTML = `<label>${label}<input id="action-primary" placeholder="${placeholder}"></label>${detail ? '<label>Argumenty lub skrót<textarea id="action-detail" rows="3"></textarea></label>' : ""}`;
@@ -154,14 +256,82 @@ function updateActionFields() {
 
 function loadTile() {
   const tile = currentTile();
+  setTileFormEnabled(Boolean(tile));
+  if (!tile) {
+    $("#selected-id").textContent = "BRAK";
+    $("#tile-label").value = ""; $("#tile-hint").value = ""; $("#tile-tone").value = "neutral"; $("#tile-type").value = "hotkey";
+    $("#action-fields").innerHTML = '<div class="action-note">Ta strona nie ma jeszcze kafelków. Dodaj nowy kafel z gotowego szablonu powyżej.</div>';
+    return;
+  }
   $("#selected-id").textContent = tile.id; $("#tile-label").value = tile.label; $("#tile-hint").value = tile.hint ?? ""; $("#tile-tone").value = tile.tone ?? "neutral"; $("#tile-type").value = tile.action.type;
   $("#icon-search").value = ""; chooseIcon(tile.icon); updateActionFields();
   const [primary, detail] = actionValues(tile.action);
   if ($("#action-primary")) $("#action-primary").value = primary;
   if ($("#action-detail")) $("#action-detail").value = detail;
+  if ($("#app-search")) renderAppChoices();
 }
 
 function renderAll() { renderTabs(); renderPreview(); loadTile(); }
+
+function tileTemplate(kind) {
+  const firstDevice = localDeviceSetup.devices?.[0];
+  const firstApp = installedApps[0];
+  const templates = {
+    blank: { label: "NOWY", hint: "Skonfiguruj", icon: "plus", tone: "neutral", action: { type: "hotkey", keys: ["CTRL", "SHIFT", "P"] } },
+    mic: { label: "MIKROFON", hint: "Windows", icon: "microphone-slash", tone: "red", action: { type: "microphoneMute" }, status: { type: "microphoneMute" } },
+    "discord-audio": { label: "WYCISZENIE", hint: "Discord", icon: "headset", tone: "red", action: { type: "processAudioMute", process: "Discord" }, status: { type: "processAudioMute", process: "Discord" } },
+    mixer: { label: "MIKSER", hint: "Audio", icon: "sliders", tone: "accent", action: { type: "page", page: "audio" } },
+    play: { label: "PLAY / PAUZA", hint: "Media", icon: "play", tone: "green", action: { type: "media", key: "playPause" } },
+    next: { label: "NASTĘPNY", hint: "Media", icon: "next", tone: "green", action: { type: "media", key: "next" } },
+    screenshot: { label: "ZRZUT", hint: "Win + Shift + S", icon: "crop-simple", tone: "blue", action: { type: "hotkey", keys: ["WIN", "SHIFT", "S"] } },
+    codex: { label: "CODEX", hint: "AI pair dev", icon: "laptop-code", tone: "accent", action: { type: "launch", command: "wt.exe", args: ["codex"] } },
+    app: { label: firstApp?.name?.slice(0, 22).toUpperCase() || "APLIKACJA", hint: "Windows", icon: "launch", tone: "blue", action: { type: "launch", command: firstApp?.command || "explorer.exe", args: firstApp?.args ?? [] } },
+    "local-device": { label: firstDevice?.name?.slice(0, 22).toUpperCase() || "TAPO", hint: "LAN", icon: "plug", tone: "green", action: { type: "localDeviceToggle", device: firstDevice?.alias || "" }, status: { type: "localDevice", device: firstDevice?.alias || "" } }
+  };
+  const base = structuredClone(templates[kind] ?? templates.blank);
+  base.id = uniqueId(base.label);
+  return base;
+}
+
+function addTile() {
+  const page = currentPage();
+  page.buttons ??= [];
+  page.buttons.push(tileTemplate($("#tile-template").value));
+  tileIndex = page.buttons.length - 1;
+  renderAll();
+  notify("Dodano nowy kafel do aktualnej strony");
+}
+
+function addPage() {
+  const label = $("#new-page-label").value.trim();
+  if (!label) return notify("Podaj nazwę nowej strony", true);
+  const id = uniquePageId(label);
+  config.pages[id] = { label, buttons: [tileTemplate("blank")] };
+  $("#new-page-label").value = "";
+  pageName = id;
+  tileIndex = 0;
+  renderAll();
+  notify(`Dodano stronę ${label}`);
+}
+
+function deletePage() {
+  if (pageName === "home") return notify("Strony głównej nie można usunąć", true);
+  if (!confirm(`Usunąć stronę "${currentPage().label}"?`)) return;
+  delete config.pages[pageName];
+  pageName = "home";
+  tileIndex = 0;
+  renderAll();
+  notify("Strona usunięta z konfiguracji");
+}
+
+function deleteTile() {
+  const page = currentPage();
+  if (!page.buttons?.length) return notify("Nie ma kafelka do usunięcia", true);
+  const removed = page.buttons.splice(tileIndex, 1)[0];
+  tileIndex = Math.max(0, Math.min(tileIndex, page.buttons.length - 1));
+  renderAll();
+  notify(`Usunięto kafel ${removed?.label ?? ""}`.trim());
+}
 
 function buildAction() {
   const type = $("#tile-type").value;
@@ -182,6 +352,7 @@ function applyTile(event) {
   event?.preventDefault();
   try {
     const tile = currentTile();
+    if (!tile) return notify("Dodaj kafel, zanim zaczniesz edycję", true);
     tile.label = $("#tile-label").value.trim(); tile.hint = $("#tile-hint").value.trim(); tile.icon = selectedIcon; tile.tone = $("#tile-tone").value; tile.action = buildAction();
     if (tile.action.type === "microphoneMute") tile.status = { type: "microphoneMute" };
     else if (tile.action.type === "processAudioMute") tile.status = { type: "processAudioMute", process: tile.action.process };
@@ -206,13 +377,62 @@ function swapTiles(source, target) {
 }
 
 function loadGlobals() {
+  const brightness = config.ui?.screensaverBrightness ?? {};
+  const night = config.ui?.nightStandby ?? {};
   $("#global-accent").value = config.accent; $("#accent-value").textContent = config.accent; $("#global-dim").value = config.ui?.dimAfterSeconds ?? 90; $("#global-saver").value = config.ui?.screensaverAfterSeconds ?? 300;
+  $("#show-now-playing").checked = config.ui?.showNowPlaying !== false; $("#show-equalizer").checked = config.ui?.showEqualizer !== false;
+  $("#brightness-night").value = brightness.night ?? 6; $("#brightness-twilight").value = brightness.twilight ?? 9; $("#brightness-day").value = brightness.day ?? 13; $("#brightness-offline-night").value = brightness.offlineNight ?? 5; $("#brightness-offline-day").value = brightness.offlineDay ?? 10;
+  $("#night-enabled").checked = night.enabled !== false; $("#night-start").value = night.start ?? "00:00"; $("#night-end").value = night.end ?? "07:00";
   document.documentElement.style.setProperty("--accent", config.accent); setPlace(config.weather ?? { city: "Warszawa", latitude: 52.2297, longitude: 21.0122 }, false);
+  renderTemplates();
 }
 
 function readGlobals() {
-  config.accent = $("#global-accent").value; config.ui = { dimAfterSeconds: Number($("#global-dim").value), screensaverAfterSeconds: Number($("#global-saver").value) };
+  config.accent = $("#global-accent").value; config.ui = {
+    ...(config.ui ?? {}),
+    dimAfterSeconds: Number($("#global-dim").value),
+    screensaverAfterSeconds: Number($("#global-saver").value),
+    showNowPlaying: $("#show-now-playing").checked,
+    showEqualizer: $("#show-equalizer").checked,
+    screensaverBrightness: {
+      night: Number($("#brightness-night").value),
+      twilight: Number($("#brightness-twilight").value),
+      day: Number($("#brightness-day").value),
+      offlineNight: Number($("#brightness-offline-night").value),
+      offlineDay: Number($("#brightness-offline-day").value)
+    },
+    nightStandby: { enabled: $("#night-enabled").checked, start: $("#night-start").value || "00:00", end: $("#night-end").value || "07:00" }
+  };
   config.weather = { city: $("#weather-city").textContent, latitude: Number($("#weather-lat").value), longitude: Number($("#weather-lon").value) };
+}
+
+async function exportConfig() {
+  try {
+    const exported = await fetchJson("/api/config/export");
+    const blob = new Blob([`${JSON.stringify(exported, null, 2)}\n`], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `endodeck-config-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    notify("Eksport konfiguracji gotowy");
+  } catch (error) { notify(error.message, true); }
+}
+
+async function importConfigFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const imported = assertConfigShape(JSON.parse(await file.text()));
+    const result = await fetchJson("/api/config/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(imported) });
+    config = assertConfigShape(result.config);
+    pageName = config.pages[pageName] ? pageName : "home";
+    tileIndex = 0;
+    loadGlobals();
+    renderAll();
+    notify("Konfiguracja zaimportowana i zapisana");
+  } catch (error) { notify(error.message, true); }
 }
 
 async function save() {
@@ -261,15 +481,18 @@ function initMap() {
 }
 
 async function boot() {
-  [config, localDeviceSetup] = await Promise.all([
+  [config, localDeviceSetup, installedApps] = await Promise.all([
     fetchJson("/api/config").then(assertConfigShape),
-    fetchJson("/api/local-devices").catch(() => ({ devices: [] }))
+    fetchJson("/api/local-devices").catch(() => ({ devices: [] })),
+    fetchJson("/api/apps").then((result) => result.apps ?? []).catch(() => [])
   ]);
   $("#icon-search").placeholder = `Szukaj w ${iconNames.length} ikonach`; loadGlobals(); renderAll(); initMap();
   updateConnection(await fetchJson("/api/state")); new EventSource("/api/events").addEventListener("message", (event) => updateConnection(JSON.parse(event.data)));
 }
 
 $("#tile-form").addEventListener("submit", applyTile); $("#tile-type").addEventListener("change", updateActionFields); $("#icon-search").addEventListener("input", () => renderIconPicker($("#icon-picker"), $("#icon-search").value, selectedIcon, chooseIcon));
-$("#move-left").addEventListener("click", () => move(-1)); $("#move-right").addEventListener("click", () => move(1)); $("#save-config").addEventListener("click", save); $("#place-search").addEventListener("submit", searchPlaces);
+$("#move-left").addEventListener("click", () => move(-1)); $("#move-right").addEventListener("click", () => move(1)); $("#delete-tile").addEventListener("click", deleteTile); $("#save-config").addEventListener("click", save); $("#place-search").addEventListener("submit", searchPlaces);
+$("#add-tile").addEventListener("click", addTile); $("#add-page").addEventListener("click", addPage); $("#delete-page").addEventListener("click", deletePage);
+$("#export-config").addEventListener("click", exportConfig); $("#import-config").addEventListener("click", () => $("#import-config-file").click()); $("#import-config-file").addEventListener("change", importConfigFile);
 $("#global-accent").addEventListener("input", (event) => { $("#accent-value").textContent = event.target.value; document.documentElement.style.setProperty("--accent", event.target.value); });
 boot().catch(showBootError);

@@ -14,6 +14,7 @@ import { getSystemStats } from "./system-stats.js";
 import { buildOfflineBundle } from "./offline-bundle.js";
 import { initializeConfigStore, loadConfig, saveConfig } from "./config-store.js";
 import { loadApiToken, requestToken, tokenMatches } from "./api-auth.js";
+import { listInstalledApps } from "./windows-apps.js";
 import { publicDir } from "./runtime-paths.js";
 
 const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png" };
@@ -21,6 +22,45 @@ const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
   response.end(JSON.stringify(data));
+}
+
+function slug(value, fallback = "page") {
+  const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return (normalized || fallback).slice(0, 48);
+}
+
+function ensureDomPage(nextConfig, localSetup) {
+  const devices = localSetup?.devices ?? [];
+  if (!devices.length) return nextConfig;
+  const config = structuredClone(nextConfig);
+  config.pages ??= {};
+  config.pages.dom ??= { label: "Dom", buttons: [] };
+  config.pages.dom.label ||= "Dom";
+  config.pages.dom.buttons ??= [];
+
+  for (const device of devices) {
+    const id = `lan-${slug(device.alias, "device")}`;
+    if (config.pages.dom.buttons.some((button) => button.id === id || button.action?.device === device.alias)) continue;
+    config.pages.dom.buttons.push({
+      id,
+      label: String(device.name || device.alias).slice(0, 22).toUpperCase(),
+      hint: "Tapo LAN",
+      icon: "plug",
+      tone: "green",
+      action: { type: "localDeviceToggle", device: device.alias },
+      status: { type: "localDevice", device: device.alias }
+    });
+  }
+
+  if (!config.pages.dom.buttons.some((button) => button.action?.type === "page" && button.action.page === "home")) {
+    config.pages.dom.buttons.push({ id: "dom-home", label: "WRÓĆ", hint: "Codzienny", icon: "back", tone: "accent", action: { type: "page", page: "home" } });
+  }
+
+  const home = config.pages.home;
+  if (home?.buttons && !home.buttons.some((button) => button.action?.type === "page" && button.action.page === "dom")) {
+    home.buttons.push({ id: "open-dom", label: "DOM", hint: "Urządzenia LAN", icon: "house", tone: "green", action: { type: "page", page: "dom" } });
+  }
+  return config;
 }
 
 async function bodyJson(request) {
@@ -94,12 +134,19 @@ export async function startServer({ onReady, onState } = {}) {
       if (url.pathname.startsWith("/api/") && !authenticated) return sendJson(response, 401, { ok: false, error: "Brak ważnej sesji EndoDeck" });
 
       if (request.method === "GET" && url.pathname === "/api/config") return sendJson(response, 200, config);
+      if (request.method === "GET" && url.pathname === "/api/config/export") return sendJson(response, 200, config);
+      if (request.method === "POST" && url.pathname === "/api/config/import") {
+        config = await saveConfig(await bodyJson(request));
+        publishConfig();
+        return sendJson(response, 200, { ok: true, config });
+      }
       if (request.method === "PUT" && url.pathname === "/api/config") {
         config = await saveConfig(await bodyJson(request));
         publishConfig();
         return sendJson(response, 200, { ok: true, config });
       }
       if (request.method === "GET" && url.pathname === "/api/state") return sendJson(response, 200, state);
+      if (request.method === "GET" && url.pathname === "/api/apps") return sendJson(response, 200, { apps: await listInstalledApps({ force: url.searchParams.get("refresh") === "1" }) });
       if (request.method === "GET" && url.pathname === "/api/weather") return sendJson(response, 200, await getWeather(config.weather));
       if (request.method === "GET" && url.pathname === "/api/geocode/search") return sendJson(response, 200, await searchPlaces(url.searchParams.get("q")));
       if (request.method === "GET" && url.pathname === "/api/geocode/reverse") return sendJson(response, 200, await reversePlace(url.searchParams.get("lat"), url.searchParams.get("lon")));
@@ -107,7 +154,15 @@ export async function startServer({ onReady, onState } = {}) {
       if (request.method === "GET" && url.pathname === "/api/audio/devices") return sendJson(response, 200, await getOutputDevices());
       if (request.method === "GET" && url.pathname === "/api/nowplaying") return sendJson(response, 200, await getNowPlaying());
       if (request.method === "GET" && url.pathname === "/api/local-devices") return sendJson(response, 200, await getLocalDeviceSetup());
-      if (request.method === "PUT" && url.pathname === "/api/local-devices") return sendJson(response, 200, await saveLocalDeviceSetup(await bodyJson(request)));
+      if (request.method === "PUT" && url.pathname === "/api/local-devices") {
+        const setup = await saveLocalDeviceSetup(await bodyJson(request));
+        const merged = ensureDomPage(config, setup);
+        if (JSON.stringify(merged.pages) !== JSON.stringify(config.pages)) {
+          config = await saveConfig(merged);
+          publishConfig();
+        }
+        return sendJson(response, 200, setup);
+      }
       if (request.method === "POST" && url.pathname === "/api/local-devices/test") return sendJson(response, 200, await testLocalDevices());
       if (request.method === "GET" && url.pathname === "/api/offline-bundle") return sendJson(response, 200, await buildOfflineBundle(config));
       if (request.method === "POST" && url.pathname === "/api/offline/toggle") {

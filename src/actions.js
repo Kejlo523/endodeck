@@ -10,6 +10,7 @@ const sendKeysScript = scriptPath("send-keys.ps1");
 
 function resolveLaunch(action) {
   const alias = String(action.command || "").toLowerCase();
+  if (/^https?:\/\//i.test(String(action.command || ""))) return { command: "explorer.exe", args: [action.command, ...(action.args ?? [])] };
   const local = process.env.LOCALAPPDATA || "";
   const roaming = process.env.APPDATA || "";
   const aliases = {
