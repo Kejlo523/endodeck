@@ -54,6 +54,7 @@
       { "from": "native/EndoDeck.WindowsHelper/bin/Release/net8.0-windows/win-x64/publish", "to": "native", "filter": ["EndoDeck.WindowsHelper.exe"] }
     ],
     "win": {
+      "icon": "resources/endodeck-icon.ico",
       "target": ["nsis", "portable", "zip"],
       "artifactName": "EndoDeck-Portable-${version}-${arch}.${ext}"
     },

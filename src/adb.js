@@ -228,17 +228,20 @@ export class AdbBridge {
       const config = await this.getConfig();
       const devices = await this.listDevices();
       const available = devices.filter((device) => device.state === "device");
-      const serial = config.device?.serial ? available.find((device) => device.serial === config.device.serial)?.serial : available[0]?.serial;
+      const pairedSerial = config.device?.serial || null;
+      const serial = pairedSerial ? available.find((device) => device.serial === pairedSerial)?.serial : available[0]?.serial;
+      const detectedSerials = available.map((device) => device.serial);
+      const ignoredSerials = serial ? detectedSerials.filter((detectedSerial) => detectedSerial !== serial) : detectedSerials;
       this.connected = Boolean(serial);
       if (serial && this.configuredSerial !== serial) await this.configureConnection(serial);
       if (!serial) this.configuredSerial = null;
       const battery = serial ? await this.battery(serial) : null;
       this.lastDevice = serial ? { serial, battery } : null;
-      this.onState?.({ connected: this.connected, serial: serial ?? null, battery });
+      this.onState?.({ connected: this.connected, serial: serial ?? null, pairedSerial, detectedSerials, ignoredSerials, battery });
     } catch {
       this.connected = false;
       this.configuredSerial = null;
-      this.onState?.({ connected: false, serial: null, battery: null });
+      this.onState?.({ connected: false, serial: null, pairedSerial: null, detectedSerials: [], ignoredSerials: [], battery: null });
     }
   }
 

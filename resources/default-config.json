@@ -35,7 +35,7 @@
         { "id": "volume-up", "label": "GŁOŚNIEJ", "hint": "Windows", "icon": "volumeUp", "tone": "blue", "action": { "type": "media", "key": "volumeUp" } },
         { "id": "media-play", "label": "PLAY / PAUZA", "hint": "Media", "icon": "play", "tone": "green", "action": { "type": "media", "key": "playPause" } },
         { "id": "media-next", "label": "NASTĘPNY", "hint": "Media", "icon": "next", "tone": "green", "action": { "type": "media", "key": "next" } },
-        { "id": "terminal", "label": "TERMINAL", "hint": "Windows Terminal", "icon": "terminal", "tone": "neutral", "action": { "type": "launch", "command": "wt.exe" } },
+        { "id": "codex", "label": "CODEX", "hint": "AI pair dev", "icon": "laptop-code", "tone": "accent", "action": { "type": "launch", "command": "wt.exe", "args": ["-d", "C:\\Users\\Kejlo\\Desktop\\download", "codex"] } },
         { "id": "files", "label": "PLIKI", "hint": "Eksplorator", "icon": "folder-open", "tone": "amber", "action": { "type": "launch", "command": "explorer.exe" } },
         { "id": "screenshot", "label": "ZRZUT", "hint": "Win + Shift + S", "icon": "crop-simple", "tone": "blue", "action": { "type": "hotkey", "keys": ["WIN", "SHIFT", "S"] } },
         { "id": "audio", "label": "MIKSER", "hint": "Audio", "icon": "sliders", "tone": "accent", "action": { "type": "page", "page": "audio" } }

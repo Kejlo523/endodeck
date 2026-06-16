@@ -39,12 +39,21 @@ function render(device) {
   $("#battery").checked = Boolean(device.profile?.features.batteryGuard);
 }
 
+function renderRuntimeState(state) {
+  document.body.classList.toggle("online", Boolean(state.adb));
+  if (state.adb || diagnosis) return;
+  const detected = state.detectedSerials || [];
+  $("#device-state").textContent = detected.length
+    ? `Wykryto inny telefon ADB: ${detected.join(", ")}. Kliknij SKANUJ USB, jeśli chcesz go skonfigurować.`
+    : "Podłącz telefon z włączonym debugowaniem USB.";
+}
+
 $("#scan").addEventListener("click", async () => {
   $("#scan").disabled = true;
   $("#scan").textContent = "SPRAWDZAM...";
   try { render(await api.diagnose()); }
   catch (error) { notify(error.message, true); }
-  finally { $("#scan").disabled = false; $("#scan").textContent = "WYKRYJ TELEFON"; }
+  finally { $("#scan").disabled = false; $("#scan").textContent = "SKANUJ USB"; }
 });
 
 $("#install-apk").addEventListener("click", async () => {
@@ -92,6 +101,23 @@ $("#install").addEventListener("click", async () => {
 
 $("#studio").addEventListener("click", () => api.openStudio());
 $("#data").addEventListener("click", () => api.openData());
+$("#restart-server").addEventListener("click", async () => {
+  const button = $("#restart-server");
+  button.disabled = true;
+  button.textContent = "Restartuję...";
+  try {
+    const result = await api.restartServer();
+    if (!result.ok) throw new Error(result.error || "Nie udało się zrestartować serwera");
+    diagnosis = null;
+    renderRuntimeState(result.state || {});
+    notify(`Serwer działa ponownie na porcie ${result.port}.`);
+  } catch (error) {
+    notify(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Restart serwera";
+  }
+});
 $("#updates").addEventListener("click", async () => {
   const result = await api.checkUpdates();
   if (!result.ok) return notify(result.error, true);
@@ -103,5 +129,5 @@ $("#updates").addEventListener("click", async () => {
 });
 $("#autostart").addEventListener("change", (event) => api.setAutostart(event.target.checked));
 api.getAutostart().then((state) => { $("#autostart").checked = state.openAtLogin; });
-api.status().then(({ state }) => { if (state.serial) api.diagnose(state.serial).then(render).catch(() => {}); });
+api.status().then(({ state }) => { if (state.serial) api.diagnose(state.serial).then(render).catch(() => renderRuntimeState(state)); else renderRuntimeState(state); });
 api.onUpdateStatus((state) => notify(state.error || state.message || "Stan aktualizacji zmieniony", Boolean(state.error)));

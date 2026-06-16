@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("EndoDeckDesktop", {
   status: () => ipcRenderer.invoke("runtime-status"),
+  restartServer: () => ipcRenderer.invoke("runtime-restart"),
   diagnose: (serial) => ipcRenderer.invoke("device-diagnose", serial),
   pair: (serial) => ipcRenderer.invoke("device-pair", serial),
   installApk: (serial) => ipcRenderer.invoke("device-install-apk", serial),

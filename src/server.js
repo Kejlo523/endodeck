@@ -36,7 +36,7 @@ export async function startServer({ onReady, onState } = {}) {
   let config = await initializeConfigStore();
   const apiToken = await loadApiToken();
   const clients = new Set();
-  const state = { adb: false, serial: null, battery: null, controls: {}, nowPlaying: null, systemStats: null, lastAction: null, error: null };
+  const state = { adb: false, serial: null, pairedSerial: null, detectedSerials: [], ignoredSerials: [], battery: null, controls: {}, nowPlaying: null, systemStats: null, lastAction: null, error: null };
   let stopped = false;
 
   function publish() {
@@ -63,9 +63,12 @@ export async function startServer({ onReady, onState } = {}) {
     token: apiToken,
     getConfig: loadConfig,
     saveConfig,
-    onState: ({ connected, serial, battery }) => {
+    onState: ({ connected, serial, pairedSerial, detectedSerials, ignoredSerials, battery }) => {
       state.adb = connected;
       state.serial = serial;
+      state.pairedSerial = pairedSerial ?? null;
+      state.detectedSerials = detectedSerials ?? [];
+      state.ignoredSerials = ignoredSerials ?? [];
       state.battery = battery;
       publish();
     }
@@ -85,7 +88,7 @@ export async function startServer({ onReady, onState } = {}) {
       }
 
       if (request.method === "GET" && url.pathname === "/api/health") {
-        return sendJson(response, 200, { ok: true, version: process.env.npm_package_version ?? "dev", schemaVersion: config.schemaVersion, android: { minSdk: 24, maxSdk: 30 }, state: { adb: state.adb, serial: state.serial } });
+        return sendJson(response, 200, { ok: true, version: process.env.npm_package_version ?? "dev", schemaVersion: config.schemaVersion, android: { minSdk: 24, maxSdk: 30 }, state: { adb: state.adb, serial: state.serial, pairedSerial: state.pairedSerial, detectedSerials: state.detectedSerials } });
       }
 
       if (url.pathname.startsWith("/api/") && !authenticated) return sendJson(response, 401, { ok: false, error: "Brak ważnej sesji EndoDeck" });
@@ -199,6 +202,8 @@ export async function startServer({ onReady, onState } = {}) {
       clearInterval(controlTimer);
       clearInterval(statsTimer);
       adb.stop();
+      for (const client of clients) client.end();
+      clients.clear();
       await new Promise((resolve) => server.close(resolve));
     }
   };

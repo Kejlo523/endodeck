@@ -9,6 +9,7 @@ let localDeviceSetup = { devices: [] };
 let map;
 let marker;
 let toastTimer;
+let draggedTileIndex = null;
 
 const toneLabels = { accent: "Akcent", blue: "Niebieski", green: "Zielony", red: "Czerwony", amber: "Bursztynowy", violet: "Fioletowy", neutral: "Szary" };
 
@@ -34,8 +35,34 @@ function renderPreview() {
   preview.classList.toggle("mixer-preview", currentPage().layout === "mixer");
   preview.replaceChildren(...currentPage().buttons.map((tile, index) => {
     const button = document.createElement("button"); button.type = "button"; button.className = `preview-tile tone-${tile.tone ?? "neutral"}${index === tileIndex ? " selected" : ""}`;
+    button.draggable = true;
+    button.dataset.index = String(index);
+    button.setAttribute("aria-label", `Kafel ${index + 1}: ${tile.label}. Przeciągnij, aby zamienić miejscami.`);
     button.innerHTML = `<span class="preview-index">${String(index + 1).padStart(2, "0")}</span><span class="preview-icon">${iconSvg(tile.icon)}</span><span class="preview-copy"><strong>${tile.label}</strong><small>${tile.hint ?? ""}</small></span>`;
-    button.addEventListener("click", () => { tileIndex = index; renderPreview(); loadTile(); }); return button;
+    button.addEventListener("click", () => { tileIndex = index; renderPreview(); loadTile(); });
+    button.addEventListener("dragstart", (event) => {
+      draggedTileIndex = index;
+      button.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    });
+    button.addEventListener("dragend", () => {
+      draggedTileIndex = null;
+      preview.querySelectorAll(".dragging,.drop-target").forEach((tileButton) => tileButton.classList.remove("dragging", "drop-target"));
+    });
+    button.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      if (draggedTileIndex !== null && draggedTileIndex !== index) button.classList.add("drop-target");
+      event.dataTransfer.dropEffect = "move";
+    });
+    button.addEventListener("dragleave", () => button.classList.remove("drop-target"));
+    button.addEventListener("drop", (event) => {
+      event.preventDefault();
+      button.classList.remove("drop-target");
+      const source = Number(event.dataTransfer.getData("text/plain"));
+      swapTiles(Number.isInteger(source) ? source : draggedTileIndex, index);
+    });
+    return button;
   }));
 }
 
@@ -122,9 +149,17 @@ function applyTile(event) {
 }
 
 function move(direction) {
-  const buttons = currentPage().buttons; const target = tileIndex + direction;
-  if (target < 0 || target >= buttons.length) return;
-  [buttons[tileIndex], buttons[target]] = [buttons[target], buttons[tileIndex]]; tileIndex = target; renderAll();
+  swapTiles(tileIndex, tileIndex + direction);
+}
+
+function swapTiles(source, target) {
+  const buttons = currentPage().buttons;
+  if (!Number.isInteger(source) || !Number.isInteger(target) || source === target || source < 0 || target < 0 || source >= buttons.length || target >= buttons.length) return false;
+  [buttons[source], buttons[target]] = [buttons[target], buttons[source]];
+  tileIndex = target;
+  renderAll();
+  notify(`Zamieniono kafel ${source + 1} z ${target + 1}`);
+  return true;
 }
 
 function loadGlobals() {
