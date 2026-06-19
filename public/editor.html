@@ -11,8 +11,14 @@
 <body>
   <header class="studio-header">
     <div class="studio-brand"><span></span><div><strong>ENDO DECK</strong><small>CONTROL SURFACE STUDIO</small></div></div>
-    <div class="header-status"><i></i><span id="header-device">Telefon połączony</span></div>
-    <div class="header-actions"><a href="/devices.html">URZĄDZENIA LAN</a><a href="/">PODGLĄD DECKA</a><button id="save-config">ZAPISZ ZMIANY</button></div>
+    <div class="header-status"><i></i><span id="header-device">Telefon połączony</span><button type="button" id="open-device-panel">PANEL URZĄDZENIA</button></div>
+    <div class="header-actions">
+      <a href="/devices.html">URZĄDZENIA LAN</a>
+      <button type="button" id="export-config">EKSPORT CFG</button>
+      <button type="button" id="import-config">IMPORT CFG</button>
+      <input id="import-config-file" type="file" accept="application/json,.json" hidden>
+      <button id="save-config">ZAPISZ ZMIANY</button>
+    </div>
   </header>
 
   <main class="studio-layout">
@@ -25,14 +31,6 @@
           <div class="two-cols">
             <label>Przyciemnij po<input id="global-dim" type="number" min="10"><small>sekundach</small></label>
             <label>Wygaszacz po<input id="global-saver" type="number" min="30"><small>sekundach</small></label>
-          </div>
-        </section>
-        <section class="control-section">
-          <div class="section-heading"><strong>KONFIGURACJA</strong><span>Backup i przenoszenie decka</span></div>
-          <div class="config-actions">
-            <button type="button" id="export-config">EKSPORTUJ</button>
-            <button type="button" id="import-config">IMPORTUJ</button>
-            <input id="import-config-file" type="file" accept="application/json,.json" hidden>
           </div>
         </section>
         <section class="control-section">

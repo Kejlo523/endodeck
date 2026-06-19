@@ -20,13 +20,15 @@ async function loadDeviceSettings() {
 }
 
 function collectSwitchButtons(config) {
-  const switches = [];
+  const switches = new Map();
   for (const page of Object.values(config.pages ?? {})) {
     for (const button of page.buttons ?? []) {
       if (button.action?.type !== "localDeviceToggle") continue;
-      switches.push({
+      const alias = String(button.action.device || "").trim();
+      if (!alias || switches.has(alias)) continue;
+      switches.set(alias, {
         id: button.id,
-        alias: button.action.device,
+        alias,
         label: button.label,
         hint: button.hint ?? "",
         tone: button.tone ?? "green"
@@ -39,21 +41,31 @@ function collectSwitchButtons(config) {
 export async function buildOfflineBundle(config) {
   const settings = await loadDeviceSettings();
   const configured = Boolean(settings.tapo.username && settings.tapo.password);
-  const switches = collectSwitchButtons(config).filter((entry) => {
-    const device = settings.devices[entry.alias];
-    return configured && device?.ip && device?.provider === "tapo";
-  });
+  const buttonOverrides = collectSwitchButtons(config);
+  const switches = [];
   const devices = {};
-  for (const entry of switches) {
-    const device = settings.devices[entry.alias];
-    devices[entry.alias] = {
-      name: device.name ?? entry.label,
-      ip: device.ip,
-      provider: device.provider ?? "tapo"
-    };
+  if (configured) {
+    for (const [alias, device] of Object.entries(settings.devices ?? {})) {
+      if (!device?.ip || device?.provider !== "tapo") continue;
+      const button = buttonOverrides.get(alias);
+      const label = button?.label || device.name || alias;
+      switches.push({
+        id: button?.id || `local-${alias}`,
+        alias,
+        label,
+        hint: button?.hint || device.model || device.ip,
+        tone: button?.tone || "green"
+      });
+      devices[alias] = {
+        name: device.name ?? label,
+        model: device.model ?? "",
+        ip: device.ip,
+        provider: device.provider ?? "tapo"
+      };
+    }
   }
   return {
-    ready: switches.length > 0,
+    ready: configured && switches.length > 0,
     lanHost: getLanHost(),
     port: Number(config.port) || 8765,
     ui: {

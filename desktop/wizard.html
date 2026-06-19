@@ -3,32 +3,86 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>EndoDeck Setup</title>
+  <title>EndoDeck</title>
   <link rel="stylesheet" href="wizard.css">
 </head>
-<body>
-  <main>
-    <header><div class="brand">ED</div><div><span>ENDODECK BETA</span><h1>Setup urządzenia</h1></div><i id="connection-dot"></i></header>
-    <section class="hero"><div><small>WINDOWS + ANDROID</small><h2>Telefon jako panel sterowania.</h2><p>Kreator sprawdza ADB, Androida 7–11, root, Magisk, WebView i dobiera profil sprzętowy. Sekrety oraz konfiguracja zostają lokalnie na tym PC.</p></div><button id="scan">SKANUJ USB</button></section>
-    <section class="grid">
-      <article><span>01</span><h3>Połączenie</h3><p id="device-state">Podłącz telefon z włączonym debugowaniem USB.</p></article>
-      <article><span>02</span><h3>Zgodność</h3><ul id="compatibility"><li>Android 7–11</li><li>Root + Magisk</li><li>System WebView</li></ul></article>
-      <article><span>03</span><h3>Profil</h3><p id="profile-state">Zostanie dobrany automatycznie po diagnozie.</p></article>
+<body class="checking">
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">ED</div>
+      <div>
+        <span>ENDODECK BETA</span>
+        <h1>Panel urządzenia</h1>
+      </div>
+      <i id="connection-dot"></i>
+    </header>
+
+    <section class="welcome-grid">
+      <aside class="status-panel">
+        <div class="panel-head">
+          <small>STATUS STARTU</small>
+          <h2 id="status-title">Sprawdzam EndoDeck</h2>
+        </div>
+        <ol class="flow">
+          <li id="step-server" class="ok"><b>Serwer lokalny</b><span>127.0.0.1 gotowe</span></li>
+          <li id="step-usb"><b>USB / ADB</b><span id="device-state">Podłącz telefon z debugowaniem USB.</span></li>
+          <li id="step-apk"><b>Aplikacja telefonu</b><span id="apk-state">Czeka na diagnozę.</span></li>
+          <li id="step-profile"><b>Profil i Magisk</b><span id="profile-state">Zostanie dobrany automatycznie.</span></li>
+        </ol>
+      </aside>
+
+      <section class="hero">
+        <div class="panel-head">
+          <small>WINDOWS + ANDROID</small>
+          <h2 id="welcome-title">Telefon jako panel sterowania.</h2>
+          <p id="welcome-copy">EndoDeck startuje w trayu, sprawdza połączenie telefonu i przygotowuje lokalne Studio bez ręcznego czekania na serwer.</p>
+        </div>
+        <div class="spec-grid">
+          <article><span>Urządzenie</span><strong id="connected-device">Brak telefonu</strong></article>
+          <article><span>Android</span><strong id="android-state">---</strong></article>
+          <article><span>Root / Magisk</span><strong id="root-state">---</strong></article>
+          <article><span>WebView</span><strong id="webview-state">---</strong></article>
+        </div>
+        <button id="studio" class="studio-cta" disabled>NAJPIERW PODŁĄCZ TELEFON</button>
+      </section>
     </section>
-    <section id="phone-app" class="phone-app hidden">
-      <div><small>APLIKACJA TELEFONU</small><h2>EndoDeck APK</h2><p id="apk-state">Najpierw wykryj telefon.</p></div>
-      <button id="install-apk">ZAINSTALUJ APK</button>
-    </section>
+
     <p id="profile-blocker" class="profile-blocker hidden"></p>
+
+    <section id="phone-app" class="phone-app hidden">
+      <div><small>APLIKACJA TELEFONU</small><h2>EndoDeck APK</h2><p>APK można zainstalować lub odświeżyć z dolnego paska akcji.</p></div>
+    </section>
+
     <section id="options" class="options hidden">
       <div><small>OPCJE ROOT</small><h2>Profil działania telefonu</h2></div>
       <label><input id="balanced" type="checkbox" checked><span><b>Balanced Tweaks</b><small>Lżejsze animacje, app standby i oszczędne skanowanie.</small></span></label>
       <label><input id="dt2w" type="checkbox"><span><b>Double tap to wake</b><small>Tylko dla profilu, który udostępnia zgodną ścieżkę kernela.</small></span></label>
       <label><input id="lockscreen" type="checkbox" checked><span><b>Bez ekranu blokady</b><small>Telefon wraca bezpośrednio do decka po wykryciu PC.</small></span></label>
       <label><input id="battery" type="checkbox"><span><b>Battery Guard</b><small>Aktywowany wyłącznie dla rozpoznanego kontrolera ładowania.</small></span></label>
-      <div class="actions"><button id="install">ZAINSTALUJ ZESTAW</button><button id="studio" class="secondary">OTWÓRZ STUDIO</button></div>
     </section>
-    <footer><button id="data">Dane użytkownika</button><button id="restart-server">Restart serwera</button><label><input id="autostart" type="checkbox"> Uruchamiaj z Windows</label><button id="updates">Sprawdź aktualizacje</button></footer>
+
+    <section class="compat-card">
+      <small>ZGODNOŚĆ</small>
+      <ul id="compatibility"><li>Android 7-11</li><li>Root + Magisk</li><li>System WebView</li></ul>
+    </section>
+
+    <footer class="action-dock">
+      <div class="dock-status">
+        <b>EndoDeck działa w tle</b>
+        <span>Panel serwisowy telefonu i aplikacji PC.</span>
+      </div>
+      <div class="dock-actions">
+        <button id="scan">SKANUJ USB</button>
+        <button id="install-apk" disabled>INSTALUJ APK</button>
+        <button id="install" disabled>INSTALUJ MAGISK</button>
+      </div>
+      <div class="dock-tools">
+        <button id="restart-server" class="secondary">Restart serwera</button>
+        <button id="updates" class="secondary">Aktualizacje</button>
+        <button id="data" class="secondary">Dane aplikacji</button>
+        <label class="autostart"><input id="autostart" type="checkbox"> Start z Windows</label>
+      </div>
+    </footer>
   </main>
   <div id="toast"></div>
   <script src="wizard.js"></script>

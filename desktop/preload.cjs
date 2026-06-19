@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("EndoDeckDesktop", {
   install: (request) => ipcRenderer.invoke("device-install", request),
   reboot: (serial) => ipcRenderer.invoke("device-reboot", serial),
   openStudio: () => ipcRenderer.invoke("open-studio"),
+  openDevicePanel: () => ipcRenderer.invoke("open-device-panel"),
   openData: () => ipcRenderer.invoke("open-data"),
   getAutostart: () => ipcRenderer.invoke("get-autostart"),
   setAutostart: (enabled) => ipcRenderer.invoke("set-autostart", enabled),

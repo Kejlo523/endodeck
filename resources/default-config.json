@@ -37,6 +37,17 @@
     "automaticDesktop": true,
     "automaticApk": true
   },
+  "runtime": {
+    "appsCacheTtlMs": 86400000,
+    "appsScanTimeoutMs": 45000,
+    "adbPollMs": 4000,
+    "controlPollMs": 2200,
+    "statsPollMs": 4000,
+    "desktopUpdateDelayMs": 15000,
+    "desktopUpdatePollMs": 60000,
+    "phoneUpdateDelayMs": 60000,
+    "phoneUpdatePollMs": 21600000
+  },
   "pages": {
     "home": {
       "label": "Codzienny",

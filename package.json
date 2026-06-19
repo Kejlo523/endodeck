@@ -1,6 +1,6 @@
 {
   "name": "endodeck",
-  "version": "1.1.0-beta.4",
+  "version": "1.1.0-beta.5",
   "private": false,
   "description": "USB Stream Deck for a repurposed Android phone",
   "author": "Kejlo523",
@@ -16,7 +16,7 @@
     "build:android": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1",
     "build:magisk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-magisk.ps1",
     "build:native": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-native-helper.ps1",
-    "build:desktop": "electron-builder --win nsis portable zip --x64",
+    "build:desktop": "electron-builder --win nsis --x64",
     "release:manifest": "node scripts/generate-release.mjs",
     "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1"
   },
@@ -48,15 +48,46 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "dist", "to": "artifacts", "filter": ["EndoDeck-*.apk", "EndoDeck-*-Magisk.zip", "release-manifest.json", "release-manifest.sig", "SHA256SUMS"] },
-      { "from": "scripts", "to": "scripts", "filter": ["*.ps1"] },
-      { "from": "vendor/platform-tools", "to": "platform-tools", "filter": ["adb.exe", "AdbWinApi.dll", "AdbWinUsbApi.dll"] },
-      { "from": "native/EndoDeck.WindowsHelper/bin/Release/net8.0-windows/win-x64/publish", "to": "native", "filter": ["EndoDeck.WindowsHelper.exe"] }
+      {
+        "from": "dist",
+        "to": "artifacts",
+        "filter": [
+          "EndoDeck-*.apk",
+          "EndoDeck-*-Magisk.zip",
+          "release-manifest.json",
+          "release-manifest.sig",
+          "SHA256SUMS"
+        ]
+      },
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "*.ps1"
+        ]
+      },
+      {
+        "from": "vendor/platform-tools",
+        "to": "platform-tools",
+        "filter": [
+          "adb.exe",
+          "AdbWinApi.dll",
+          "AdbWinUsbApi.dll"
+        ]
+      },
+      {
+        "from": "native/EndoDeck.WindowsHelper/bin/Release/net8.0-windows/win-x64/publish",
+        "to": "native",
+        "filter": [
+          "EndoDeck.WindowsHelper.exe"
+        ]
+      }
     ],
     "win": {
       "icon": "resources/endodeck-icon.ico",
-      "target": ["nsis", "portable", "zip"],
-      "artifactName": "EndoDeck-Portable-${version}-${arch}.${ext}"
+      "target": [
+        "nsis"
+      ]
     },
     "nsis": {
       "artifactName": "EndoDeck-Setup-${version}-${arch}.${ext}",
@@ -67,6 +98,13 @@
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": false
     },
-    "publish": [{ "provider": "github", "owner": "Kejlo523", "repo": "endodeck", "releaseType": "prerelease" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Kejlo523",
+        "repo": "endodeck",
+        "releaseType": "prerelease"
+      }
+    ]
   }
 }

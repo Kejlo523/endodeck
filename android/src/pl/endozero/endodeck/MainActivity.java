@@ -241,6 +241,11 @@ public final class MainActivity extends Activity {
                     if (serverAvailable) {
                         if (nightStandby) leaveNightStandby();
                         if (!deckVisible) webView.loadUrl(authenticatedDeckUrl());
+                    } else if (isNightHours()) {
+                        enterNightStandby(true);
+                    } else if (nightStandby) {
+                        leaveNightStandby();
+                        showOffline();
                     } else if (!serverAvailable && deckVisible) {
                         deckVisible = false;
                         webView.loadUrl(OFFLINE_URL);
@@ -446,11 +451,17 @@ public final class MainActivity extends Activity {
     }
 
     private void enterNightStandby() {
-        if (destroyed || deckVisible) return;
+        enterNightStandby(false);
+    }
+
+    private void enterNightStandby(boolean force) {
+        if (destroyed || (!force && deckVisible)) return;
+        deckVisible = false;
         nightStandby = true;
         preferences.edit().putBoolean("night_standby", true).apply();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (webView != null) {
+            webView.loadUrl("about:blank");
             webView.onPause();
             webView.pauseTimers();
         }
@@ -482,6 +493,10 @@ public final class MainActivity extends Activity {
     }
 
     private void showOffline() {
+        if (isNightHours()) {
+            enterNightStandby(true);
+            return;
+        }
         if (!deckVisible && OFFLINE_URL.equals(webView.getUrl())) return;
         deckVisible = false;
         webView.loadUrl(OFFLINE_URL);

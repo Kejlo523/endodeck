@@ -49,10 +49,16 @@ function parseScheduleMinute(value, fallback) {
   return hour * 60 + minute;
 }
 
+function pollInterval(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 1000 ? number : 4000;
+}
+
 export class AdbBridge {
-  constructor({ port, token, getConfig, saveConfig, onState }) {
+  constructor({ port, token, pollMs, getConfig, saveConfig, onState }) {
     this.port = port;
     this.token = token;
+    this.pollMs = pollInterval(pollMs);
     this.getConfig = getConfig;
     this.saveConfig = saveConfig;
     this.onState = onState;
@@ -262,7 +268,7 @@ export class AdbBridge {
 
   start() {
     this.tick();
-    this.timer = setInterval(() => this.tick(), 4000);
+    this.timer = setInterval(() => this.tick(), this.pollMs);
   }
 
   stop() {

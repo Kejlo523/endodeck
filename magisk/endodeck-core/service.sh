@@ -74,7 +74,7 @@ while true; do
     if usb_configured; then
         disconnected_at=0
         if [ "$last" != connected ]; then "$CTL" wake; echo "$(date '+%F %T') PC connected" >> "$LOG"; last=connected; fi
-    elif [ -f /data/local/tmp/endodeck-night-standby ] && night_active; then
+    elif night_active; then
         disconnected_at=0
         if [ "$last" != night ]; then "$CTL" sleep-night; echo "$(date '+%F %T') night standby" >> "$LOG"; last=night; fi
     elif [ -f /data/local/tmp/endodeck-night-standby ]; then

@@ -15,11 +15,20 @@ wake_screen() {
     if dumpsys power 2>/dev/null | grep -q 'mWakefulness=Asleep'; then input keyevent 26; fi
 }
 
+screen_off() {
+    input keyevent 223
+    sleep 1
+    if dumpsys power 2>/dev/null | grep -qE 'mWakefulness=Awake|Display Power: state=ON'; then
+        input keyevent 26
+    fi
+}
+
 case "$1" in
     wake)
         rm -f "$NIGHT_MARKER"
         dumpsys deviceidle unforce >/dev/null 2>&1
         settings put global stay_on_while_plugged_in 2
+        svc power stayon usb >/dev/null 2>&1
         settings put system screen_off_timeout 1800000
         settings put global airplane_mode_on 1
         am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null 2>&1
@@ -36,21 +45,22 @@ case "$1" in
     sleep-night)
         touch "$NIGHT_MARKER"
         settings put global stay_on_while_plugged_in 0
+        svc power stayon false >/dev/null 2>&1
         settings put system screen_off_timeout 15000
         settings put global airplane_mode_on 1
         am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null 2>&1
         svc data disable >/dev/null 2>&1
         svc wifi disable >/dev/null 2>&1
-        input keyevent 223
-        sleep 2
+        am force-stop pl.endozero.endodeck >/dev/null 2>&1
+        screen_off
         dumpsys deviceidle force-idle >/dev/null 2>&1
         ;;
     sleep)
         settings put global stay_on_while_plugged_in 0
+        svc power stayon false >/dev/null 2>&1
         svc data disable >/dev/null 2>&1
         svc wifi disable >/dev/null 2>&1
-        input keyevent 223
-        sleep 2
+        screen_off
         dumpsys deviceidle force-idle >/dev/null 2>&1
         ;;
     restore)

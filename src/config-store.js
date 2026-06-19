@@ -43,6 +43,18 @@ function migrate(config) {
   };
   next.device = { serial: null, profile: "generic", apkVariant: "universal", modulesPending: false, ...(next.device ?? {}) };
   next.updates = { channel: "beta", automaticDesktop: true, automaticApk: true, ...(next.updates ?? {}) };
+  next.runtime = {
+    appsCacheTtlMs: 24 * 60 * 60_000,
+    appsScanTimeoutMs: 45_000,
+    adbPollMs: 4000,
+    controlPollMs: 2200,
+    statsPollMs: 4000,
+    desktopUpdateDelayMs: 15_000,
+    desktopUpdatePollMs: 60_000,
+    phoneUpdateDelayMs: 60_000,
+    phoneUpdatePollMs: 6 * 60 * 60_000,
+    ...(next.runtime ?? {})
+  };
   return next;
 }
 

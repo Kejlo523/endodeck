@@ -2,6 +2,7 @@
 .endodeck.pid
 endodeck.log
 endodeck-error.log
+endodeck-electron*.log
 devices.local.json
 config.json
 release.local.json

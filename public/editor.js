@@ -68,7 +68,7 @@ function assertConfigShape(nextConfig) {
 
 function friendlyError(error) {
   return error.message === "Brak ważnej sesji EndoDeck"
-    ? "Brak sesji EndoDeck. Otwórz Studio z ikonki EndoDeck w trayu albo z Setupu."
+    ? "Brak lokalnej sesji EndoDeck. Odśwież stronę albo otwórz Studio z ikonki EndoDeck w trayu."
     : error.message;
 }
 
@@ -86,7 +86,7 @@ function showBootError(error) {
   const copy = document.createElement("p");
   copy.textContent = message;
   const hint = document.createElement("small");
-  hint.textContent = "Jeśli otwierasz adres ręcznie, zamknij tę kartę i użyj opcji Otwórz Studio z traya EndoDeck.";
+  hint.textContent = "Studio działa lokalnie na 127.0.0.1. Jeśli serwer był restartowany, odśwież tę kartę.";
   card.replaceChildren(title, copy, hint);
   preview.replaceChildren(card);
 }
@@ -208,7 +208,13 @@ function renderAppChoices() {
   if (!list) return;
   const query = ($("#app-search")?.value ?? "").trim().toLowerCase();
   const currentCommand = $("#action-primary")?.value ?? "";
-  const apps = installedApps.filter((app) => !query || matchesApp(app, query)).slice(0, 80);
+  const apps = installedApps.filter((app) => !query || matchesApp(app, query)).slice(0, 120);
+  const count = $("#app-count");
+  if (count) count.textContent = query ? `${apps.length} / ${installedApps.length} programów` : `${installedApps.length} programów`;
+  if (!installedApps.length) {
+    list.innerHTML = '<div class="app-empty">Nie udało się wczytać listy programów. Użyj ODŚWIEŻ albo wpisz ścieżkę ręcznie powyżej.</div>';
+    return;
+  }
   if (!apps.length) {
     list.innerHTML = '<div class="app-empty">Nie znaleziono programu. Możesz nadal wpisać ścieżkę ręcznie powyżej.</div>';
     return;
@@ -221,6 +227,24 @@ function renderAppChoices() {
     button.addEventListener("click", () => selectApp(app));
     return button;
   }));
+}
+
+async function refreshApps(force = true) {
+  const button = $("#refresh-apps");
+  if (button) button.disabled = true;
+  try {
+    installedApps = await fetchJson(`/api/apps${force ? "?refresh=1" : ""}`).then((result) => result.apps ?? []);
+    renderTemplates();
+    if ($("#tile-type")?.value === "launch") {
+      if ($("#app-search")) renderAppChoices();
+      else updateActionFields();
+    }
+    if (force) notify(`Wczytano ${installedApps.length} programów`);
+  } catch (error) {
+    notify(error.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function updateActionFields() {
@@ -245,8 +269,9 @@ function updateActionFields() {
     return;
   }
   if (type === "launch") {
-    $("#action-fields").innerHTML = `<label>${label}<input id="action-primary" placeholder="${placeholder}"></label><label>Argumenty<textarea id="action-detail" rows="3"></textarea></label><div class="app-picker-box"><div class="section-heading"><strong>APLIKACJE WINDOWS</strong><span>${installedApps.length} wykrytych skrótów</span></div><div class="app-search-row"><input id="app-search" type="search" placeholder="Szukaj programu, np. Discord, Code, Steam"><button type="button" id="clear-app-search">WYCZYŚĆ</button></div><div id="app-list" class="app-list" role="listbox"></div><div class="action-note">Wybierz program z listy, a Studio samo uzupełni ścieżkę, argumenty, nazwę kafla i ikonę.</div></div>`;
+    $("#action-fields").innerHTML = `<label>${label}<input id="action-primary" placeholder="${placeholder}"></label><label>Argumenty<textarea id="action-detail" rows="3"></textarea></label><div class="app-picker-box"><div class="section-heading"><strong>APLIKACJE WINDOWS</strong><span id="app-count">${installedApps.length} programów</span></div><div class="app-search-row"><input id="app-search" type="search" placeholder="Szukaj programu, np. Discord, Code, Steam"><button type="button" id="refresh-apps">ODŚWIEŻ</button><button type="button" id="clear-app-search">WYCZYŚĆ</button></div><div id="app-list" class="app-list" role="listbox"></div><div class="action-note">Lista obejmuje skróty, programy użytkownika, rejestr i aplikacje ze Start. Pierwsze skanowanie może chwilę potrwać.</div></div>`;
     $("#app-search").addEventListener("input", renderAppChoices);
+    $("#refresh-apps").addEventListener("click", () => refreshApps(true));
     $("#clear-app-search").addEventListener("click", () => { $("#app-search").value = ""; renderAppChoices(); });
     renderAppChoices();
     return;
@@ -481,11 +506,11 @@ function initMap() {
 }
 
 async function boot() {
-  [config, localDeviceSetup, installedApps] = await Promise.all([
+  [config, localDeviceSetup] = await Promise.all([
     fetchJson("/api/config").then(assertConfigShape),
-    fetchJson("/api/local-devices").catch(() => ({ devices: [] })),
-    fetchJson("/api/apps").then((result) => result.apps ?? []).catch(() => [])
+    fetchJson("/api/local-devices").catch(() => ({ devices: [] }))
   ]);
+  await refreshApps(false);
   $("#icon-search").placeholder = `Szukaj w ${iconNames.length} ikonach`; loadGlobals(); renderAll(); initMap();
   updateConnection(await fetchJson("/api/state")); new EventSource("/api/events").addEventListener("message", (event) => updateConnection(JSON.parse(event.data)));
 }
@@ -494,5 +519,9 @@ $("#tile-form").addEventListener("submit", applyTile); $("#tile-type").addEventL
 $("#move-left").addEventListener("click", () => move(-1)); $("#move-right").addEventListener("click", () => move(1)); $("#delete-tile").addEventListener("click", deleteTile); $("#save-config").addEventListener("click", save); $("#place-search").addEventListener("submit", searchPlaces);
 $("#add-tile").addEventListener("click", addTile); $("#add-page").addEventListener("click", addPage); $("#delete-page").addEventListener("click", deletePage);
 $("#export-config").addEventListener("click", exportConfig); $("#import-config").addEventListener("click", () => $("#import-config-file").click()); $("#import-config-file").addEventListener("change", importConfigFile);
+$("#open-device-panel").addEventListener("click", () => {
+  if (window.EndoDeckDesktop?.openDevicePanel) window.EndoDeckDesktop.openDevicePanel();
+  else notify("Panel urządzenia jest dostępny z aplikacji EndoDeck w trayu.", true);
+});
 $("#global-accent").addEventListener("input", (event) => { $("#accent-value").textContent = event.target.value; document.documentElement.style.setProperty("--accent", event.target.value); });
 boot().catch(showBootError);

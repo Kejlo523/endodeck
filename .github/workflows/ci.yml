@@ -14,11 +14,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: android-actions/setup-android@v3
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
@@ -27,8 +22,6 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build:native
-      - run: npm run build:android
-      - run: npm run build:magisk
       - name: Validate Magisk shell scripts
         shell: bash
         run: find magisk -type f \( -name '*.sh' -o -path '*/system/bin/endodeckctl' \) -print0 | xargs -0 -n1 sh -n
@@ -42,11 +35,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: android-actions/setup-android@v3
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
@@ -54,25 +42,16 @@ jobs:
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-platform-tools.ps1
       - run: npm run prepare:assets
       - run: npm run build:native
-      - run: npm run build:android
-      - run: npm run build:magisk
-      - run: npm run release:manifest
-        env:
-          ENDODECK_RELEASE_PRIVATE_KEY: ${{ secrets.RELEASE_ED25519_PRIVATE_KEY }}
+      - name: Prepare optional artifact folder
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force dist | Out-Null
       - run: npm run build:desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm sbom --sbom-format=cyclonedx | Set-Content release/EndoDeck-SBOM.cdx.json -Encoding utf8
-        shell: pwsh
-      - run: npm run release:manifest
-        env:
-          ENDODECK_RELEASE_PRIVATE_KEY: ${{ secrets.RELEASE_ED25519_PRIVATE_KEY }}
       - uses: actions/upload-artifact@v4
         with:
-          name: endodeck-beta
+          name: endodeck-installer-update
           path: |
-            release/*
-            dist/*.apk
-            dist/*Magisk.zip
-            dist/release-manifest.*
-            dist/SHA256SUMS
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml

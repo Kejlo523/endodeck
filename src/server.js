@@ -19,6 +19,24 @@ import { publicDir } from "./runtime-paths.js";
 
 const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png" };
 
+function numberSetting(value, fallback, minimum = 500) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= minimum ? number : fallback;
+}
+
+function isLoopbackRequest(request) {
+  return ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.socket.remoteAddress);
+}
+
+function sessionCookie(token) {
+  return `endodeck_session=${token}; HttpOnly; SameSite=Strict; Path=/`;
+}
+
+function shouldBootstrapSession(request, url, authenticated) {
+  if (authenticated || request.method !== "GET" || !isLoopbackRequest(request)) return false;
+  return url.pathname === "/" || url.pathname.endsWith(".html");
+}
+
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
   response.end(JSON.stringify(data));
@@ -101,6 +119,7 @@ export async function startServer({ onReady, onState } = {}) {
   const adb = new AdbBridge({
     port: config.port,
     token: apiToken,
+    pollMs: config.runtime?.adbPollMs,
     getConfig: loadConfig,
     saveConfig,
     onState: ({ connected, serial, pairedSerial, detectedSerials, ignoredSerials, battery }) => {
@@ -120,10 +139,11 @@ export async function startServer({ onReady, onState } = {}) {
       const url = new URL(request.url, `http://${request.headers.host || "127.0.0.1"}`);
       const suppliedToken = requestToken(request, url);
       const authenticated = tokenMatches(apiToken, suppliedToken);
+      const bootstrapSession = shouldBootstrapSession(request, url, authenticated);
 
       if (url.searchParams.has("token") && authenticated && request.method === "GET") {
         url.searchParams.delete("token");
-        response.writeHead(302, { Location: `${url.pathname}${url.search}`, "Set-Cookie": `endodeck_session=${apiToken}; HttpOnly; SameSite=Strict; Path=/` });
+        response.writeHead(302, { Location: `${url.pathname}${url.search}`, "Set-Cookie": sessionCookie(apiToken) });
         return response.end();
       }
 
@@ -146,7 +166,13 @@ export async function startServer({ onReady, onState } = {}) {
         return sendJson(response, 200, { ok: true, config });
       }
       if (request.method === "GET" && url.pathname === "/api/state") return sendJson(response, 200, state);
-      if (request.method === "GET" && url.pathname === "/api/apps") return sendJson(response, 200, { apps: await listInstalledApps({ force: url.searchParams.get("refresh") === "1" }) });
+      if (request.method === "GET" && url.pathname === "/api/apps") {
+        return sendJson(response, 200, { apps: await listInstalledApps({
+          force: url.searchParams.get("refresh") === "1",
+          cacheTtlMs: config.runtime?.appsCacheTtlMs,
+          scanTimeoutMs: config.runtime?.appsScanTimeoutMs
+        }) });
+      }
       if (request.method === "GET" && url.pathname === "/api/weather") return sendJson(response, 200, await getWeather(config.weather));
       if (request.method === "GET" && url.pathname === "/api/geocode/search") return sendJson(response, 200, await searchPlaces(url.searchParams.get("q")));
       if (request.method === "GET" && url.pathname === "/api/geocode/reverse") return sendJson(response, 200, await reversePlace(url.searchParams.get("lat"), url.searchParams.get("lon")));
@@ -215,7 +241,9 @@ export async function startServer({ onReady, onState } = {}) {
       const filePath = normalize(`${publicDir}${sep}${relative}`);
       if (!filePath.startsWith(`${publicDir}${sep}`)) return sendJson(response, 403, { error: "Forbidden" });
       const data = await readFile(filePath);
-      response.writeHead(200, { "Content-Type": mime[extname(filePath)] ?? "application/octet-stream", "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" });
+      const headers = { "Content-Type": mime[extname(filePath)] ?? "application/octet-stream", "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" };
+      if (bootstrapSession) headers["Set-Cookie"] = sessionCookie(apiToken);
+      response.writeHead(200, headers);
       response.end(data);
     } catch (error) {
       if (error.code === "ENOENT") return sendJson(response, 404, { error: "Not found" });
@@ -238,11 +266,11 @@ export async function startServer({ onReady, onState } = {}) {
         publish();
       }
     } catch {}
-  }, 2200);
+  }, numberSetting(config.runtime?.controlPollMs, 2200));
   const statsTimer = setInterval(async () => {
     state.systemStats = await getSystemStats().catch(() => state.systemStats);
     publish();
-  }, 4000);
+  }, numberSetting(config.runtime?.statsPollMs, 4000));
 
   const runtime = {
     port: config.port,

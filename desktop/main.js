@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, powerMonitor, shell, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, shell, Tray } from "electron";
 import updater from "electron-updater";
-import { appendFileSync } from "node:fs";
+import { existsSync, appendFileSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,7 +9,7 @@ const desktopDir = fileURLToPath(new URL(".", import.meta.url));
 const { autoUpdater } = updater;
 let runtime;
 let tray;
-let wizard;
+let mainWindow;
 let updateReady = false;
 let updateTimer;
 let phoneUpdateTimer;
@@ -33,12 +34,19 @@ if (!singleInstance) {
 }
 
 function appIconPath(extension = "png") {
-  return join(app.getAppPath(), "resources", `endodeck-icon.${extension}`);
+  const candidates = [
+    join(app.getAppPath(), "resources", `endodeck-icon.${extension}`),
+    join(process.resourcesPath || "", "resources", `endodeck-icon.${extension}`),
+    join(process.resourcesPath || "", `endodeck-icon.${extension}`)
+  ];
+  return candidates.find((path) => path && existsSync(path)) ?? candidates[0];
 }
 
 function trayIcon() {
   const icon = nativeImage.createFromPath(appIconPath("png"));
-  return icon.isEmpty() ? nativeImage.createFromPath(join(app.getAppPath(), "public", "favicon.svg")) : icon;
+  if (!icon.isEmpty()) return icon;
+  const fallback = nativeImage.createFromPath(join(app.getAppPath(), "public", "favicon.svg"));
+  return fallback.isEmpty() ? nativeImage.createEmpty() : fallback;
 }
 
 function configurePaths() {
@@ -52,44 +60,162 @@ function configurePaths() {
   }
 }
 
-function createWizard() {
-  if (wizard && !wizard.isDestroyed()) {
-    if (wizard.isMinimized()) wizard.restore();
-    wizard.show();
-    wizard.focus();
-    return wizard;
+function runtimeDelay(config, key, fallback, minimum = 1000) {
+  const value = Number(config.runtime?.[key]);
+  return Number.isFinite(value) && value >= minimum ? value : fallback;
+}
+
+function backgroundLaunch() {
+  const loginState = app.getLoginItemSettings();
+  return process.argv.includes("--background") || process.argv.includes("--hidden") || Boolean(loginState.wasOpenedAtLogin);
+}
+
+function autostartSettings(enabled) {
+  return { openAtLogin: Boolean(enabled), path: app.getPath("exe"), args: enabled ? ["--background"] : [] };
+}
+
+function autostartPreferencePath() {
+  return join(app.getPath("userData"), "autostart.json");
+}
+
+function readAutostartPreference() {
+  try {
+    const value = JSON.parse(readFileSync(autostartPreferencePath(), "utf8"));
+    return typeof value.enabled === "boolean" && value.userConfigured === true ? value : null;
+  } catch {
+    return null;
   }
-  wizard = new BrowserWindow({
+}
+
+function writeAutostartPreference(enabled) {
+  try {
+    mkdirSync(app.getPath("userData"), { recursive: true });
+    writeFileSync(autostartPreferencePath(), `${JSON.stringify({ enabled: Boolean(enabled), userConfigured: true, updatedAt: new Date().toISOString() }, null, 2)}\n`, "utf8");
+  } catch (error) {
+    bootLog(`autostart preference write failed: ${error.message}`);
+  }
+}
+
+function queryRunValue(name) {
+  if (process.platform !== "win32") return "";
+  const result = spawnSync("reg.exe", ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "/v", name], {
+    encoding: "utf8",
+    windowsHide: true
+  });
+  return result.status === 0 ? `${result.stdout}\n${result.stderr}` : "";
+}
+
+function deleteRunValue(name) {
+  if (process.platform !== "win32") return;
+  spawnSync("reg.exe", ["delete", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "/v", name, "/f"], {
+    encoding: "utf8",
+    windowsHide: true
+  });
+}
+
+function cleanupLegacyAutostart() {
+  if (process.platform !== "win32") return;
+  const startupShortcut = join(process.env.APPDATA || "", "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "EndoDeck.lnk");
+  try {
+    if (startupShortcut && existsSync(startupShortcut)) {
+      unlinkSync(startupShortcut);
+      bootLog(`removed legacy startup shortcut: ${startupShortcut}`);
+    }
+  } catch (error) {
+    bootLog(`legacy startup shortcut cleanup failed: ${error.message}`);
+  }
+
+  const runValue = queryRunValue("pl.endozero.endodeck");
+  if (/node_modules\\electron|scripts\\start-endodeck\.ps1|powershell\.exe|node\.exe/i.test(runValue)) {
+    deleteRunValue("pl.endozero.endodeck");
+    bootLog("removed legacy HKCU Run autostart");
+  }
+}
+
+function getAutostartState() {
+  const state = app.getLoginItemSettings();
+  return { ...state, unsupportedDevAutostart: !app.isPackaged };
+}
+
+function setAutostart(enabled) {
+  cleanupLegacyAutostart();
+  if (!app.isPackaged) {
+    return { ...getAutostartState(), openAtLogin: false, unsupportedDevAutostart: true };
+  }
+  app.setLoginItemSettings(autostartSettings(enabled));
+  writeAutostartPreference(enabled);
+  return getAutostartState();
+}
+
+function ensureDefaultAutostart() {
+  cleanupLegacyAutostart();
+  if (!app.isPackaged) return;
+  const preference = readAutostartPreference();
+  if (preference) {
+    app.setLoginItemSettings(autostartSettings(preference.enabled));
+    return;
+  }
+  if (!app.getLoginItemSettings().openAtLogin) {
+    app.setLoginItemSettings(autostartSettings(true));
+    bootLog("enabled default packaged autostart");
+  }
+}
+
+function focusWindow(window) {
+  if (!window || window.isDestroyed()) return;
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+}
+
+function createMainWindow({ show = true } = {}) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (show) focusWindow(mainWindow);
+    return mainWindow;
+  }
+  mainWindow = new BrowserWindow({
     width: 940,
     height: 680,
     minWidth: 760,
     minHeight: 560,
-    title: "EndoDeck Setup",
+    title: "EndoDeck",
+    show,
     backgroundColor: "#0a0d0b",
     icon: appIconPath("ico"),
     webPreferences: { preload: join(desktopDir, "preload.cjs"), contextIsolation: true, nodeIntegration: false }
   });
-  wizard.removeMenu();
-  wizard.loadFile(join(desktopDir, "wizard.html"));
-  wizard.on("closed", () => { wizard = null; });
-  return wizard;
+  mainWindow.removeMenu();
+  mainWindow.on("closed", () => { mainWindow = null; });
+  return mainWindow;
+}
+
+function openSetup() {
+  const window = createMainWindow();
+  window.loadFile(join(desktopDir, "wizard.html"));
+  focusWindow(window);
+  return window;
 }
 
 function openDeck(path = "/editor.html") {
-  return shell.openExternal(runtime.url(path));
+  if (!runtime) return openSetup();
+  const window = createMainWindow();
+  window.loadURL(runtime.url(path));
+  focusWindow(window);
+  return window;
 }
 
 function trayMenu() {
+  const autostart = getAutostartState();
   return Menu.buildFromTemplate([
     { label: runtime ? `Serwer: działa na 127.0.0.1:${runtime.port}` : restartingServer ? "Serwer: restart..." : "Serwer: offline", enabled: false },
     { label: runtime?.state.adb ? `Telefon: ${runtime.state.serial}` : runtime?.state.detectedSerials?.length ? `Inny telefon: ${runtime.state.detectedSerials.join(", ")}` : "Telefon: offline", enabled: false },
     { label: "Otwórz Studio", enabled: Boolean(runtime), click: () => openDeck("/editor.html") },
     { label: "Otwórz deck", enabled: Boolean(runtime), click: () => openDeck("/") },
-    { label: "Konfiguracja telefonu", click: createWizard },
-    { label: "Restartuj serwer", enabled: !restartingServer, click: () => restartRuntime().catch((error) => wizard?.webContents.send("update-status", { error: error.message })) },
+    { label: "Konfiguracja telefonu", click: openSetup },
+    { label: "Restartuj serwer", enabled: !restartingServer, click: () => restartRuntime().catch((error) => mainWindow?.webContents.send("update-status", { error: error.message })) },
     { type: "separator" },
     { label: updateReady ? "Zainstaluj pobraną aktualizację" : "Sprawdź aktualizacje", click: () => updateReady ? autoUpdater.quitAndInstall(false, true) : autoUpdater.checkForUpdates() },
-    { label: "Uruchamiaj z Windows", type: "checkbox", checked: app.getLoginItemSettings().openAtLogin, click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, path: process.execPath }) },
+    { label: app.isPackaged ? "Uruchamiaj z Windows" : "Uruchamiaj z Windows (tylko po instalacji)", type: "checkbox", enabled: app.isPackaged, checked: !autostart.unsupportedDevAutostart && Boolean(autostart.openAtLogin), click: (item) => setAutostart(item.checked) },
     { type: "separator" },
     { label: "Zakończ EndoDeck", click: () => app.quit() }
   ]);
@@ -99,7 +225,7 @@ function createTray() {
   const icon = trayIcon();
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon.resize({ width: 20, height: 20 }));
   updateTray();
-  tray.on("double-click", createWizard);
+  tray.on("double-click", openSetup);
 }
 
 function updateTray() {
@@ -140,22 +266,22 @@ function configureUpdates(config) {
     updateReady = true;
     tray?.setContextMenu(trayMenu());
   });
-  autoUpdater.on("error", (error) => wizard?.webContents.send("update-status", { error: error.message }));
+  autoUpdater.on("error", (error) => mainWindow?.webContents.send("update-status", { error: error.message }));
   if (app.isPackaged) {
-    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 15000);
+    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), runtimeDelay(config, "desktopUpdateDelayMs", 15_000));
     updateTimer = setInterval(() => {
-      if (config.updates?.automaticDesktop && updateReady && powerMonitor.getSystemIdleTime() >= 300 && !wizard?.isVisible()) autoUpdater.quitAndInstall(false, true);
-    }, 60000);
+      if (config.updates?.automaticDesktop && updateReady && powerMonitor.getSystemIdleTime() >= 300 && !mainWindow?.isVisible()) autoUpdater.quitAndInstall(false, true);
+    }, runtimeDelay(config, "desktopUpdatePollMs", 60_000));
     const checkPhone = () => {
       if (!runtime?.state.serial || !releaseUpdates) return;
       releaseUpdates.checkPhone(runtime.state.serial, { automaticApk: config.updates?.automaticApk !== false })
         .then((result) => {
-          if (result.apkUpdated || result.modulesPending) wizard?.webContents.send("update-status", { message: result.apkUpdated ? "APK telefonu zaktualizowane" : `Pobrano ${result.modulesPending} moduły Magisk` });
+          if (result.apkUpdated || result.modulesPending) mainWindow?.webContents.send("update-status", { message: result.apkUpdated ? "APK telefonu zaktualizowane" : `Pobrano ${result.modulesPending} moduły Magisk` });
         })
         .catch(() => {});
     };
-    setTimeout(checkPhone, 60000);
-    phoneUpdateTimer = setInterval(checkPhone, 6 * 60 * 60 * 1000);
+    setTimeout(checkPhone, runtimeDelay(config, "phoneUpdateDelayMs", 60_000));
+    phoneUpdateTimer = setInterval(checkPhone, runtimeDelay(config, "phoneUpdatePollMs", 6 * 60 * 60_000));
   }
 }
 
@@ -168,9 +294,10 @@ function registerIpc() {
   ipcMain.handle("device-install", (_, request) => runtime.adb.installProfile(request.serial, request.options));
   ipcMain.handle("device-reboot", (_, serial) => runtime.adb.run(["-s", serial, "reboot"], 10000).then(() => ({ ok: true })));
   ipcMain.handle("open-studio", () => openDeck("/editor.html"));
+  ipcMain.handle("open-device-panel", () => openSetup());
   ipcMain.handle("open-data", () => shell.openPath(app.getPath("userData")));
-  ipcMain.handle("set-autostart", (_, enabled) => { app.setLoginItemSettings({ openAtLogin: Boolean(enabled), path: process.execPath }); return app.getLoginItemSettings(); });
-  ipcMain.handle("get-autostart", () => app.getLoginItemSettings());
+  ipcMain.handle("set-autostart", (_, enabled) => setAutostart(enabled));
+  ipcMain.handle("get-autostart", () => getAutostartState());
   ipcMain.handle("check-updates", async () => {
     try {
       const config = await runtime.getConfig();
@@ -182,14 +309,15 @@ function registerIpc() {
   ipcMain.handle("install-module-updates", (_, serial) => releaseUpdates.installPendingModules(serial));
 }
 
-app.on("second-instance", () => createWizard());
-app.on("activate", () => createWizard());
+app.on("second-instance", () => openSetup());
+app.on("activate", () => openSetup());
 app.on("window-all-closed", (event) => event.preventDefault());
 app.on("before-quit", () => { clearInterval(updateTimer); clearInterval(phoneUpdateTimer); runtime?.stop(); });
 
 app.whenReady().then(async () => {
   bootLog("electron ready");
   configurePaths();
+  ensureDefaultAutostart();
   bootLog(`paths configured: ${process.env.ENDODECK_DATA_DIR}`);
   const { startServer } = await import("../src/server.js");
   startServerFn = startServer;
@@ -204,9 +332,15 @@ app.whenReady().then(async () => {
   createTray();
   bootLog("tray created");
   configureUpdates(config);
-  if (!runtime.state.serial) createWizard();
+  if (!backgroundLaunch()) openSetup();
 }).catch((error) => {
   bootLog(`fatal: ${error.stack || error.message}`);
   console.error(error);
+  if (error?.code === "EADDRINUSE") {
+    dialog.showErrorBox(
+      "EndoDeck nie może wystartować",
+      "Port 8765 jest już zajęty przez inny proces (zwykle stary serwer EndoDeck uruchomiony ręcznie).\n\nZamknij go w Menedżerze zadań albo uruchom ponownie komputer, a potem odpal EndoDeck jeszcze raz."
+    );
+  }
   app.quit();
 });

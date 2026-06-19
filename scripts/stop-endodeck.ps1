@@ -6,6 +6,11 @@ if (Test-Path $pidFile) {
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 }
 
+$listener = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($listener) {
+    Stop-Process -Id $listener.OwningProcess -Force -ErrorAction SilentlyContinue
+}
+
 $adb = Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'
 if (Test-Path $adb) {
     & $adb reverse --remove tcp:8765 2>$null
