@@ -49,6 +49,19 @@ function parseScheduleMinute(value, fallback) {
   return hour * 60 + minute;
 }
 
+function nightOptionLines(config = {}) {
+  const nightStandby = config.ui?.display?.nightStandby ?? config.ui?.nightStandby ?? {};
+  const startMinute = parseScheduleMinute(nightStandby.start, 0);
+  const endMinute = parseScheduleMinute(nightStandby.end, 7 * 60);
+  return [
+    `NIGHT_STANDBY_ENABLED=${nightStandby.enabled === false ? 0 : 1}`,
+    `NIGHT_STANDBY_START_MINUTE=${startMinute}`,
+    `NIGHT_STANDBY_END_MINUTE=${endMinute}`,
+    `NIGHT_STANDBY_START_HOUR=${Math.floor(startMinute / 60)}`,
+    `NIGHT_STANDBY_END_HOUR=${Math.floor(endMinute / 60)}`
+  ];
+}
+
 function pollInterval(value) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 1000 ? number : 4000;
@@ -188,25 +201,34 @@ export class AdbBridge {
     await this.shell(serial, `su -c 'magisk --install-module ${remote}'`, 120000);
   }
 
+  async writeOptionLines(serial, lines) {
+    const commands = [
+      "mkdir -p /data/adb/endodeck",
+      "touch /data/adb/endodeck/options.conf",
+      ...lines.map((line) => {
+        const [key, value] = line.split("=");
+        return `if grep -q "^${key}=" /data/adb/endodeck/options.conf; then sed -i "s|^${key}=.*|${key}=${value}|" /data/adb/endodeck/options.conf; else echo "${key}=${value}" >> /data/adb/endodeck/options.conf; fi`;
+      })
+    ].join("; ");
+    await this.shell(serial, `su -c '${commands}'`, 30000);
+  }
+
+  async syncRuntimeOptions(serial, config = null) {
+    await this.writeOptionLines(serial, nightOptionLines(config ?? await this.getConfig().catch(() => ({}))));
+  }
+
   async installProfile(serial, options = {}) {
     const diagnosis = await this.pair(serial);
     await this.installApk(serial, diagnosis.profile.apkVariant);
     await this.shell(serial, "su -c 'for old in endodeck_power_guard endodeck_touch_wake p8_battery_tweaks; do [ -d /data/adb/modules/$old ] && touch /data/adb/modules/$old/remove; done'").catch(() => {});
     const config = await this.getConfig().catch(() => ({}));
-    const nightStandby = config.ui?.nightStandby ?? {};
-    const startMinute = parseScheduleMinute(nightStandby.start, 0);
-    const endMinute = parseScheduleMinute(nightStandby.end, 7 * 60);
     const optionLines = [
       `ENABLE_LOCKSCREEN_BYPASS=${options.lockscreenBypass ? 1 : 0}`,
       `ENABLE_DT2W=${options.doubleTapWake ? 1 : 0}`,
       `ENABLE_BATTERY_GUARD=${options.batteryGuard ? 1 : 0}`,
-      `NIGHT_STANDBY_ENABLED=${nightStandby.enabled === false ? 0 : 1}`,
-      `NIGHT_STANDBY_START_MINUTE=${startMinute}`,
-      `NIGHT_STANDBY_END_MINUTE=${endMinute}`,
-      `NIGHT_STANDBY_START_HOUR=${Math.floor(startMinute / 60)}`,
-      `NIGHT_STANDBY_END_HOUR=${Math.floor(endMinute / 60)}`
-    ].join("\\n");
-    await this.shell(serial, `su -c 'mkdir -p /data/adb/endodeck; printf "${optionLines}\\n" > /data/adb/endodeck/options.conf'`);
+      ...nightOptionLines(config)
+    ];
+    await this.writeOptionLines(serial, optionLines);
     const moduleFiles = {
       "endodeck-core": "EndoDeck-Core-Magisk.zip",
       "endodeck-balanced": "EndoDeck-Balanced-Magisk.zip",
@@ -222,6 +244,7 @@ export class AdbBridge {
 
   async configureConnection(serial) {
     await this.run(["-s", serial, "reverse", `tcp:${this.port}`, `tcp:${this.port}`]);
+    await this.syncRuntimeOptions(serial).catch(() => {});
     await this.shell(serial, "settings put system accelerometer_rotation 0");
     await this.shell(serial, "settings put system user_rotation 1");
     await this.shell(serial, `su -c '/system/bin/endodeckctl wake' >/dev/null 2>&1 || input keyevent 224`).catch(() => {});

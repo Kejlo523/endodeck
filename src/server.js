@@ -164,6 +164,7 @@ export async function startServer({ onReady, onState, version } = {}) {
       }
       if (request.method === "PUT" && url.pathname === "/api/config") {
         config = await saveConfig(await bodyJson(request));
+        if (state.serial) adb.syncRuntimeOptions(state.serial, config).catch(() => {});
         publishConfig();
         return sendJson(response, 200, { ok: true, config });
       }

@@ -164,9 +164,13 @@ export function calculateScreensaverBrightness(config, weather, offline = false,
   const levels = offline
     ? { night: brightnessPercent(brightness.offlineNight, 5), day: brightnessPercent(brightness.offlineDay, 10), twilight: brightnessPercent(brightness.twilight, 9) }
     : { night: brightnessPercent(brightness.night, 6), day: brightnessPercent(brightness.day, 13), twilight: brightnessPercent(brightness.twilight, 9) };
-  if (sunrise === null || sunset === null) return levels.night;
-  if (Math.abs(minute - sunrise) <= 45 || Math.abs(minute - sunset) <= 45) return levels.twilight;
-  return minute > sunrise && minute < sunset ? levels.day : levels.night;
+  const level = sunrise === null || sunset === null
+    ? levels.night
+    : Math.abs(minute - sunrise) <= 45 || Math.abs(minute - sunset) <= 45
+      ? levels.twilight
+      : minute > sunrise && minute < sunset ? levels.day : levels.night;
+  const oledMultiplier = profile?.protection?.lowBrightnessOled === true ? .82 : 1;
+  return clamp(level * oledMultiplier, .01, 1);
 }
 
 function applyRootTheme(root, profile, context, options) {
@@ -200,12 +204,15 @@ export function updateScreensaverProtection(root, profile, options = {}) {
     root?.style.setProperty("--saver-rotation", "0deg");
     return;
   }
-  const phase = Math.floor(Date.now() / 300_000);
+  const interval = clamp(Number(protection.staticElementLimitMinutes || 12) * 60_000, 60_000, 120 * 60_000);
+  const phase = Math.floor(Date.now() / interval);
   const positions = [[-5, -3], [4, -4], [-3, 4], [5, 3], [0, -5], [-4, 2], [3, 5], [0, 0]];
   const [x, y] = positions[phase % positions.length];
+  const subtleRotation = protection.subtleRotation ? ((phase % 5) - 2) * .08 : 0;
+  const compositionRotation = protection.compositionRotation ? ((phase % 7) - 3) * .14 : 0;
   root.style.setProperty("--saver-shift-x", `${x}px`);
   root.style.setProperty("--saver-shift-y", `${y}px`);
-  root.style.setProperty("--saver-rotation", protection.subtleRotation ? `${((phase % 5) - 2) * .08}deg` : "0deg");
+  root.style.setProperty("--saver-rotation", `${subtleRotation + compositionRotation}deg`);
 }
 
 function applyElementStyle(node, entry) {
@@ -219,13 +226,31 @@ function applyElementStyle(node, entry) {
   node.style.zIndex = String(entry.zIndex ?? 10);
   node.style.display = entry.visible === false ? "none" : "";
   const style = entry.style ?? {};
-  if (style.color) node.style.color = style.color;
+  if (style.color) {
+    node.style.color = style.color;
+    node.style.setProperty("--element-color", style.color);
+    node.style.setProperty("--element-accent", style.color);
+  }
   if (style.background) node.style.background = style.background;
   if (style.border) node.style.border = style.border;
   if (style.radius) node.style.borderRadius = `${style.radius}px`;
   if (style.opacity !== undefined) node.style.opacity = String(style.opacity);
-  if (style.align) node.style.textAlign = style.align;
-  if (style.size) node.style.setProperty("--element-size-num", String(style.size));
+  const align = ["left", "center", "right"].includes(style.align) ? style.align : "center";
+  const justify = align === "left" ? "start" : align === "right" ? "end" : "center";
+  const flexJustify = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  node.classList.add(`align-${align}`);
+  node.dataset.align = align;
+  node.style.textAlign = align;
+  node.style.setProperty("--element-align", align);
+  node.style.setProperty("--element-justify", justify);
+  node.style.setProperty("--element-flex-justify", flexJustify);
+  node.style.setProperty("--element-object-position", `${align} center`);
+  if (style.size) {
+    const size = Number(style.size);
+    if (Number.isFinite(size) && size > 0) {
+      node.style.setProperty("--element-size-num", String(size));
+    }
+  }
   if (style.letterSpacing !== undefined) node.style.setProperty("--element-letter", `${style.letterSpacing}em`);
   if (style.weight) node.style.fontWeight = String(style.weight);
   if (style.font === "mono") node.classList.add("screen-element-mono");

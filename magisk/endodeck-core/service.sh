@@ -81,7 +81,20 @@ last=unknown
 disconnected_at=0
 night_screen_retry_at=0
 while true; do
-    if usb_configured; then
+    if [ -f /data/local/tmp/endodeck-night-standby ] && night_active; then
+        disconnected_at=0
+        now=$(date +%s)
+        if [ "$last" != night ]; then
+            "$CTL" sleep-night
+            night_screen_retry_at=$now
+            echo "$(date '+%F %T') night standby marker" >> "$LOG"
+            last=night
+        elif screen_on && [ $((now - night_screen_retry_at)) -ge "$NIGHT_SCREEN_RETRY_SECONDS" ]; then
+            "$CTL" screen-off
+            night_screen_retry_at=$now
+            echo "$(date '+%F %T') night screen-off retry" >> "$LOG"
+        fi
+    elif usb_configured; then
         disconnected_at=0
         night_screen_retry_at=0
         if [ "$last" != connected ]; then "$CTL" wake; echo "$(date '+%F %T') PC connected" >> "$LOG"; last=connected; fi

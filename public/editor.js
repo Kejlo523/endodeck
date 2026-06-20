@@ -1,6 +1,6 @@
 import { iconNames, iconSvg, renderIconPicker, resolveIcon } from "./icon-ui.js";
 import { ELEMENT_TYPES, PRESET_LABELS, cloneScreensaver, createDefaultScreensavers, ensureScreensaverConfig, normalizeScreensaver } from "./screensaver-presets.js";
-import { demoScreensaverContext, getDisplayConfig, renderScreensaver } from "./screensaver-renderer.js";
+import { calculateScreensaverBrightness, demoScreensaverContext, getDisplayConfig, renderScreensaver } from "./screensaver-renderer.js";
 
 const $ = (selector) => document.querySelector(selector);
 let config;
@@ -415,8 +415,7 @@ function uniqueElementId(type, profile = selectedScreensaver()) {
   return candidate;
 }
 
-function readSaverProfileControls() {
-  const profile = selectedScreensaver();
+function readSaverProfileControls(profile = selectedScreensaver()) {
   if (!profile) return;
   profile.background ??= {};
   profile.theme ??= {};
@@ -445,8 +444,75 @@ function loadSaverProfileControls() {
   $("#protect-static-limit").value = profile.protection?.staticElementLimitMinutes ?? 12;
 }
 
-function readSaverElementForm() {
-  const element = selectedSaverElement();
+function readBrightnessControls() {
+  return {
+    night: readNumberField("#brightness-night", 6, { min: 1, max: 100 }),
+    twilight: readNumberField("#brightness-twilight", 9, { min: 1, max: 100 }),
+    day: readNumberField("#brightness-day", 13, { min: 1, max: 100 }),
+    offlineNight: readNumberField("#brightness-offline-night", 5, { min: 1, max: 100 }),
+    offlineDay: readNumberField("#brightness-offline-day", 10, { min: 1, max: 100 })
+  };
+}
+
+function loadScreensaverDisplayControls() {
+  const display = getDisplayConfig(config);
+  const profile = selectedScreensaver();
+  const brightness = { ...(display.screensaverBrightness ?? {}), ...(profile?.brightness ?? {}) };
+  const night = display.nightStandby ?? {};
+  $("#global-dim").value = display.dimAfterSeconds;
+  $("#global-saver").value = display.screensaverAfterSeconds;
+  $("#show-now-playing").checked = display.showNowPlaying !== false;
+  $("#show-equalizer").checked = display.showEqualizer !== false && display.visualizer?.enabled !== false;
+  $("#brightness-night").value = brightness.night ?? 6;
+  $("#brightness-twilight").value = brightness.twilight ?? 9;
+  $("#brightness-day").value = brightness.day ?? 13;
+  $("#brightness-offline-night").value = brightness.offlineNight ?? 5;
+  $("#brightness-offline-day").value = brightness.offlineDay ?? 10;
+  $("#night-enabled").checked = night.enabled !== false;
+  $("#night-start").value = night.start ?? "00:00";
+  $("#night-end").value = night.end ?? "07:00";
+}
+
+function applyScreensaverDisplayControls({ syncProfileBrightness = true } = {}) {
+  ensureScreensaverConfig(config);
+  const current = getDisplayConfig(config);
+  const brightness = readBrightnessControls();
+  const dimAfterSeconds = readNumberField("#global-dim", current.dimAfterSeconds, { min: 1, max: 3600 });
+  const screensaverAfterSeconds = readNumberField("#global-saver", current.screensaverAfterSeconds, { min: 1, max: 7200 });
+  const showNowPlaying = $("#show-now-playing")?.checked ?? current.showNowPlaying;
+  const showEqualizer = $("#show-equalizer")?.checked ?? current.showEqualizer;
+  const nightStandby = {
+    enabled: $("#night-enabled")?.checked ?? current.nightStandby.enabled,
+    start: $("#night-start")?.value || current.nightStandby.start || "00:00",
+    end: $("#night-end")?.value || current.nightStandby.end || "07:00"
+  };
+  const display = {
+    ...current,
+    dimAfterSeconds,
+    screensaverAfterSeconds,
+    showNowPlaying,
+    showEqualizer,
+    visualizer: { ...(current.visualizer ?? {}), enabled: showEqualizer },
+    screensaverBrightness: brightness,
+    nightStandby
+  };
+  config.ui = {
+    ...(config.ui ?? {}),
+    display,
+    dimAfterSeconds,
+    screensaverAfterSeconds,
+    showNowPlaying,
+    showEqualizer,
+    screensaverBrightness: brightness,
+    nightStandby
+  };
+  if (syncProfileBrightness) {
+    const profile = selectedScreensaver();
+    if (profile) profile.brightness = { ...brightness };
+  }
+}
+
+function readSaverElementForm(element = selectedSaverElement()) {
   if (!element || !$("#saver-element-label")) return;
   const label = $("#saver-element-label");
   if (label && !label.disabled) element.label = label.value.trim() || element.label;
@@ -540,10 +606,12 @@ function renderSaverCardPreview(preview, profile) {
 }
 
 function renderSaverList() {
-  $("#screensaver-list").replaceChildren(...screensavers().map((profile) => {
+  $("#screensaver-list").replaceChildren(...screensavers().map((profile, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `screensaver-card${profile.id === selectedScreensaverId ? " active" : ""}${profile.id === config.ui.screensaverProfile ? " current" : ""}`;
+    button.dataset.saverId = profile.id;
+    button.dataset.saverIndex = String(index);
     const preview = document.createElement("div");
     renderSaverCardPreview(preview, profile);
     const info = document.createElement("div");
@@ -568,6 +636,7 @@ function renderSaverElementList() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `saver-element-choice${entry.id === selectedSaverElementId ? " active" : ""}`;
+    button.dataset.elementId = entry.id;
     button.innerHTML = `<strong>${escapeHtml(entry.label || entry.type)}</strong><span>${entry.visible === false ? "UKRYTY" : entry.locked ? "LOCK" : `Z ${entry.zIndex ?? 0}`}</span><small>${escapeHtml(elementTypeLabels[entry.type] || entry.type)} · ${Math.round(entry.x)}:${Math.round(entry.y)} · ${Math.round(entry.w)}x${Math.round(entry.h)}</small>`;
     button.addEventListener("click", () => { readSaverElementForm(); selectedSaverElementId = entry.id; renderSaverStudio(); });
     return button;
@@ -607,10 +676,15 @@ function addSelectionToPreview() {
 function renderSaverPreview() {
   const profile = selectedScreensaver();
   if (!profile) return;
-  renderScreensaver($("#screensaver-preview"), profile, {
+  const context = {
     config,
     ...demoScreensaverContext(config.accent)
-  }, { preview: true, editing: true });
+  };
+  const preview = $("#screensaver-preview");
+  renderScreensaver(preview, profile, context, { preview: true, editing: true });
+  const brightness = calculateScreensaverBrightness(config, context.weather, false, context.now, profile);
+  preview.style.filter = `brightness(${(.58 + brightness * 3.2).toFixed(3)})`;
+  preview.dataset.previewBrightness = String(Math.round(brightness * 100));
   addSelectionToPreview();
 }
 
@@ -654,6 +728,7 @@ function renderSaverStudio() {
   renderSaverPresetOptions();
   renderSaverList();
   renderSaverElementList();
+  loadScreensaverDisplayControls();
   loadSaverProfileControls();
   loadSaverElementForm();
   renderSaverPreview();
@@ -1136,12 +1211,8 @@ function loadGlobals(options = {}) {
   const previousElement = selectedSaverElementId;
   ensureScreensaverConfig(config);
   const display = getDisplayConfig(config);
-  const brightness = display.screensaverBrightness ?? {};
-  const night = display.nightStandby ?? {};
-  $("#global-accent").value = config.accent; $("#accent-value").textContent = config.accent; $("#global-dim").value = display.dimAfterSeconds; $("#global-saver").value = display.screensaverAfterSeconds;
-  $("#show-now-playing").checked = display.showNowPlaying !== false; $("#show-equalizer").checked = display.showEqualizer !== false && display.visualizer?.enabled !== false;
-  $("#brightness-night").value = brightness.night ?? 6; $("#brightness-twilight").value = brightness.twilight ?? 9; $("#brightness-day").value = brightness.day ?? 13; $("#brightness-offline-night").value = brightness.offlineNight ?? 5; $("#brightness-offline-day").value = brightness.offlineDay ?? 10;
-  $("#night-enabled").checked = night.enabled !== false; $("#night-start").value = night.start ?? "00:00"; $("#night-end").value = night.end ?? "07:00";
+  $("#global-accent").value = config.accent; $("#accent-value").textContent = config.accent;
+  loadScreensaverDisplayControls();
   document.documentElement.style.setProperty("--accent", config.accent); setPlace(config.weather ?? { city: "Warszawa", latitude: 52.2297, longitude: 21.0122 }, false);
   if (options.preserveScreensaverSelection && config.ui.screensavers.some((profile) => profile.id === previousProfile)) {
     selectedScreensaverId = previousProfile;
@@ -1156,32 +1227,7 @@ function loadGlobals(options = {}) {
 
 function readGlobals() {
   config.accent = $("#global-accent").value;
-  const display = {
-    ...getDisplayConfig(config),
-    dimAfterSeconds: Number($("#global-dim").value),
-    screensaverAfterSeconds: Number($("#global-saver").value),
-    showNowPlaying: $("#show-now-playing").checked,
-    showEqualizer: $("#show-equalizer").checked,
-    visualizer: { ...(getDisplayConfig(config).visualizer ?? {}), enabled: $("#show-equalizer").checked },
-    screensaverBrightness: {
-      night: Number($("#brightness-night").value),
-      twilight: Number($("#brightness-twilight").value),
-      day: Number($("#brightness-day").value),
-      offlineNight: Number($("#brightness-offline-night").value),
-      offlineDay: Number($("#brightness-offline-day").value)
-    },
-    nightStandby: { enabled: $("#night-enabled").checked, start: $("#night-start").value || "00:00", end: $("#night-end").value || "07:00" }
-  };
-  config.ui = {
-    ...(config.ui ?? {}),
-    display,
-    dimAfterSeconds: display.dimAfterSeconds,
-    screensaverAfterSeconds: display.screensaverAfterSeconds,
-    showNowPlaying: display.showNowPlaying,
-    showEqualizer: display.showEqualizer,
-    screensaverBrightness: display.screensaverBrightness,
-    nightStandby: display.nightStandby
-  };
+  applyScreensaverDisplayControls({ syncProfileBrightness: true });
   config.weather = { city: $("#weather-city").textContent, latitude: Number($("#weather-lat").value), longitude: Number($("#weather-lon").value) };
   readSaverProfileControls();
   readSaverElementForm();
@@ -1314,8 +1360,8 @@ for (const selector of ["#saver-element-label", "#saver-element-x", "#saver-elem
   $(selector)?.addEventListener("change", () => { readSaverElementForm(); renderSaverPreview(); renderSaverElementList(); });
 }
 for (const selector of ["#global-dim", "#global-saver", "#show-now-playing", "#show-equalizer", "#brightness-night", "#brightness-twilight", "#brightness-day", "#brightness-offline-night", "#brightness-offline-day", "#night-enabled", "#night-start", "#night-end"]) {
-  $(selector)?.addEventListener("input", () => { readGlobals(); });
-  $(selector)?.addEventListener("change", () => { readGlobals(); });
+  $(selector)?.addEventListener("input", () => { applyScreensaverDisplayControls({ syncProfileBrightness: true }); renderSaverPreview(); renderSaverList(); });
+  $(selector)?.addEventListener("change", () => { applyScreensaverDisplayControls({ syncProfileBrightness: true }); renderSaverPreview(); renderSaverList(); });
 }
 $("#open-device-panel").addEventListener("click", () => {
   if (window.EndoDeckDesktop?.openDevicePanel) window.EndoDeckDesktop.openDevicePanel();

@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService deviceExecutor = Executors.newFixedThreadPool(3);
     private final ConcurrentHashMap<String, TapoClient> tapoClients = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> tapoStates = new ConcurrentHashMap<>();
+    private volatile boolean tapoAuthBlocked;
     private static final String NIGHT_MARKER = "/data/local/tmp/endodeck-night-standby";
     private static final int DEFAULT_NIGHT_START_MINUTE = 0;
     private static final int DEFAULT_NIGHT_END_MINUTE = 7 * 60;
@@ -117,6 +118,7 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public void refreshLocalDeviceStates() {
+            if (tapoAuthBlocked) return;
             try {
                 org.json.JSONObject bundle = readOfflineBundle();
                 if (!bundle.optBoolean("ready", false)) return;
@@ -137,6 +139,7 @@ public final class MainActivity extends Activity {
                 long startedAt = System.currentTimeMillis();
                 org.json.JSONObject result = new org.json.JSONObject();
                 try {
+                    if (tapoAuthBlocked) throw new Exception("Tapo auth failed");
                     org.json.JSONObject bundle = readOfflineBundle();
                     if (!bundle.optBoolean("ready", false)) throw new Exception("Brak zapisanych urzadzen Tapo");
                     org.json.JSONObject device = bundle.getJSONObject("devices").getJSONObject(alias);
@@ -185,11 +188,16 @@ public final class MainActivity extends Activity {
 
         private void putDeviceError(org.json.JSONObject result, String alias, Exception error) {
             try {
+                String friendly = friendlyTapoError(error);
+                if (friendly.contains("Bledne dane konta Tapo")) {
+                    tapoAuthBlocked = true;
+                    tapoClients.clear();
+                }
                 result.put("alias", alias);
                 if (!result.has("kind")) result.put("kind", "status");
                 result.put("active", tapoStates.containsKey(alias) && tapoStates.get(alias));
                 result.put("available", false);
-                result.put("error", friendlyTapoError(error));
+                result.put("error", friendly);
             } catch (Exception ignored) { }
         }
 
@@ -378,6 +386,7 @@ public final class MainActivity extends Activity {
         try { secureStore.put("offline_bundle", bundleJson); } catch (Exception ignored) { return; }
         applyPowerSchedule(bundleJson);
         if (!bundleJson.equals(previous)) {
+            tapoAuthBlocked = false;
             tapoClients.clear();
             tapoStates.clear();
         }

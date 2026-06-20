@@ -13,11 +13,13 @@ let mainWindow;
 let updateReady = false;
 let updateTimer;
 let phoneUpdateTimer;
+let runtimeHealthTimer;
 let releaseUpdates;
 let startServerFn;
 let ReleaseUpdateManagerClass;
 let restartingServer = false;
 let runtimeRecoveryTimer;
+let runtimeHealthFailedOnce = false;
 
 function bootLog(message) {
   if (!process.env.ENDODECK_BOOT_LOG) return;
@@ -284,6 +286,29 @@ function scheduleRuntimeRecovery(reason) {
   }, 2500);
 }
 
+async function runtimeHealthCheck() {
+  if (!runtime || restartingServer) return;
+  let timeout;
+  try {
+    const controller = new AbortController();
+    timeout = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch(`http://127.0.0.1:${runtime.port}/api/health`, { signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    runtimeHealthFailedOnce = false;
+  } catch (error) {
+    bootLog(`runtime health failed: ${error.message}`);
+    if (runtimeHealthFailedOnce) scheduleRuntimeRecovery("health-watchdog");
+    runtimeHealthFailedOnce = true;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function configureRuntimeWatchdog(config) {
+  clearInterval(runtimeHealthTimer);
+  runtimeHealthTimer = setInterval(runtimeHealthCheck, runtimeDelay(config, "runtimeHealthPollMs", 30_000, 10_000));
+}
+
 function configureUpdates(config) {
   autoUpdater.allowPrerelease = config.updates?.channel !== "stable";
   autoUpdater.autoDownload = true;
@@ -343,7 +368,7 @@ app.on("activate", () => {
   if (process.platform === "darwin") openSetup();
 });
 app.on("window-all-closed", (event) => event.preventDefault());
-app.on("before-quit", () => { clearInterval(updateTimer); clearInterval(phoneUpdateTimer); clearTimeout(runtimeRecoveryTimer); runtime?.stop(); });
+app.on("before-quit", () => { clearInterval(updateTimer); clearInterval(phoneUpdateTimer); clearInterval(runtimeHealthTimer); clearTimeout(runtimeRecoveryTimer); runtime?.stop(); });
 
 app.whenReady().then(async () => {
   bootLog("electron ready");
@@ -364,6 +389,7 @@ app.whenReady().then(async () => {
   bootLog("tray created");
   powerMonitor.on("resume", () => scheduleRuntimeRecovery("system-resume"));
   powerMonitor.on("unlock-screen", () => scheduleRuntimeRecovery("unlock-screen"));
+  configureRuntimeWatchdog(config);
   configureUpdates(config);
   if (wantsWindow()) openRequestedWindow();
   else if (backgroundLaunch()) bootLog("started in background");
