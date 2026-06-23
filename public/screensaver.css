@@ -197,6 +197,42 @@
   display: none;
 }
 
+@keyframes endo-hand-spin {
+  from { transform: translateX(-50%) rotate(0deg); }
+  to { transform: translateX(-50%) rotate(360deg); }
+}
+
+.screen-renderer-light .analog-hand {
+  transition: none;
+  will-change: auto;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-name: endo-hand-spin;
+}
+
+.screen-renderer-light .analog-hand.hour { animation-duration: 43200s; }
+.screen-renderer-light .analog-hand.minute { animation-duration: 3600s; }
+.screen-renderer-light .analog-hand.second { animation-duration: 60s; }
+
+.screen-renderer-light::after {
+  display: none !important;
+}
+
+.screen-renderer-light .screen-stage {
+  transition: none;
+  transform: none !important;
+}
+
+.screen-renderer-light .saver-ring,
+.screen-renderer-light .screen-analog-clock,
+.screen-renderer-light [class*="screen-element"] {
+  filter: none !important;
+}
+
+.screen-renderer-light .eq.playing i {
+  will-change: auto;
+}
+
 .screen-analog-clock b {
   position: absolute;
   left: 50%;

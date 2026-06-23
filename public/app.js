@@ -2,6 +2,7 @@ import { iconSvg } from "./icon-ui.js";
 import { activeScreensaver, calculateScreensaverBrightness, getDisplayConfig, renderScreensaver, updateScreensaverDynamic, updateScreensaverProtection } from "./screensaver-renderer.js";
 
 const $ = (selector) => document.querySelector(selector);
+const LIGHTWEIGHT_RENDER = typeof window !== "undefined" && Boolean(window.NativeDeck);
 const grid = $("#button-grid");
 const toast = $("#toast");
 const settingsPanel = $("#settings-panel");
@@ -572,7 +573,7 @@ function updateClock() {
   const now = new Date();
   const main = deckClockFormatter.format(now);
   $("#clock").textContent = main;
-  if (screensaverActive) updateScreensaverDynamic(screensaver, { config, now, optimizeAnimations: false, motionState: currentMotionState(), clockOnly: true });
+  if (screensaverActive) updateScreensaverDynamic(screensaver, { config, now, optimizeAnimations: false, motionState: currentMotionState(), lightweight: LIGHTWEIGHT_RENDER, clockOnly: true });
 }
 
 const weatherLabels = { 0:["SŁONECZNIE","☀"],1:["PRAWIE BEZCHMURNIE","◒"],2:["CZĘŚCIOWE ZACHMURZENIE","◑"],3:["POCHMURNO","☁"],45:["MGŁA","≋"],48:["SZADŹ","≋"],51:["MŻAWKA","⋰"],53:["MŻAWKA","⋰"],55:["MŻAWKA","⋰"],61:["DESZCZ","↯"],63:["DESZCZ","↯"],65:["ULEWA","↯"],71:["ŚNIEG","✦"],73:["ŚNIEG","✦"],75:["ŚNIEŻYCA","✦"],80:["PRZELOTNY DESZCZ","↯"],81:["PRZELOTNY DESZCZ","↯"],82:["ULEWA","↯"],95:["BURZA","ϟ"],96:["BURZA Z GRADEM","ϟ"],99:["BURZA Z GRADEM","ϟ"] };
@@ -662,8 +663,9 @@ function refreshScreensaver() {
     accent: config.accent,
     now: new Date(),
     optimizeAnimations: false,
-    motionState: currentMotionState()
-  }, { optimizeAnimations: false, motionState: currentMotionState() });
+    motionState: currentMotionState(),
+    lightweight: LIGHTWEIGHT_RENDER
+  }, { optimizeAnimations: false, motionState: currentMotionState(), lightweight: LIGHTWEIGHT_RENDER });
 }
 
 function updateScreensaverLive(extra = {}) {
@@ -689,6 +691,7 @@ function updateScreensaverLive(extra = {}) {
     now: new Date(),
     optimizeAnimations: false,
     motionState: currentMotionState(),
+    lightweight: LIGHTWEIGHT_RENDER,
     ...extra
   });
 }

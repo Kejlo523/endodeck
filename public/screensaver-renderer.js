@@ -82,6 +82,21 @@ function continuousSecondAngle(node, angle) {
   return next;
 }
 
+const LIGHT_HAND_PERIODS = { hour: 43200, minute: 3600, second: 60 };
+
+function setupLightAnalog(container, now) {
+  const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+  const minutes = now.getMinutes() + seconds / 60;
+  const hours = (now.getHours() % 12) + minutes / 60;
+  const angles = { hour: hours * 30, minute: minutes * 6, second: seconds * 6 };
+  for (const type of ["hour", "minute", "second"]) {
+    const hand = container.querySelector(`.analog-hand.${type}`);
+    if (!hand) continue;
+    hand.style.animationDelay = `${-(angles[type] / 360) * LIGHT_HAND_PERIODS[type]}s`;
+  }
+  container.dataset.lightAnalog = "1";
+}
+
 function dataRateParts(bytes) {
   const value = Number(bytes) || 0;
   if (value >= 1024 * 1024) return { value: (value / 1024 / 1024).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1), unit: "MB/s" };
@@ -188,9 +203,11 @@ export function calculateScreensaverBrightness(config, weather, offline = false,
 
 function applyRootTheme(root, profile, context, options) {
   const theme = profile.theme ?? {};
+  const lightweight = options.lightweight === true || context.lightweight === true;
   root.classList.add("screen-renderer");
   root.classList.toggle("screen-renderer-preview", options.preview === true);
   root.classList.toggle("screen-renderer-editing", options.editing === true);
+  root.classList.toggle("screen-renderer-light", lightweight);
   root.classList.toggle("screen-renderer-optimized", options.optimizeAnimations === true || context.optimizeAnimations === true);
   applyMotionState(root, context.config ?? {}, context, options);
   root.dataset.preset = profile.preset;
@@ -204,7 +221,9 @@ function applyRootTheme(root, profile, context, options) {
   root.style.setProperty("--saver-rotation", "0deg");
   root.style.color = "var(--saver-ink)";
   const background = profile.background ?? {};
-  if (background.type === "image" && background.value) {
+  if (lightweight) {
+    root.style.background = theme.surface || (background.type === "image" ? "#060806" : background.value) || "#060806";
+  } else if (background.type === "image" && background.value) {
     root.style.background = `${background.overlay || "linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.28))"}, url("${background.value}") center / cover no-repeat`;
   } else {
     root.style.background = background.value || "#060806";
@@ -229,7 +248,7 @@ function applyMotionState(root, config, context = {}, options = {}) {
 
 export function updateScreensaverProtection(root, profile, options = {}) {
   const protection = profile?.protection ?? {};
-  if (!root || options.editing === true || options.disabled === true || !protection.pixelShift) {
+  if (!root || options.editing === true || options.disabled === true || options.lightweight === true || !protection.pixelShift) {
     root?.style.setProperty("--saver-shift-x", "0px");
     root?.style.setProperty("--saver-shift-y", "0px");
     root?.style.setProperty("--saver-rotation", "0deg");
@@ -496,7 +515,8 @@ export function renderScreensaver(root, profile, context = {}, options = {}) {
     weather: context.weather ?? demoWeather(),
     now: context.now ?? new Date(),
     optimizeAnimations: options.optimizeAnimations === true || context.optimizeAnimations === true,
-    motionState: options.motionState ?? context.motionState ?? "full"
+    motionState: options.motionState ?? context.motionState ?? "full",
+    lightweight: options.lightweight === true || context.lightweight === true
   };
   applyRootTheme(root, activeProfile, fullContext, options);
   const stage = document.createElement("div");
@@ -507,7 +527,7 @@ export function renderScreensaver(root, profile, context = {}, options = {}) {
     .map((entry) => renderElement(entry, fullContext, config, activeProfile)));
   root.replaceChildren(stage);
   cacheDynamicNodes(root);
-  updateScreensaverProtection(root, activeProfile, options);
+  updateScreensaverProtection(root, activeProfile, { ...options, lightweight: fullContext.lightweight });
 }
 
 export function updateScreensaverDynamic(root, context = {}) {
@@ -526,19 +546,25 @@ export function updateScreensaverDynamic(root, context = {}) {
   for (const node of cache.dates) {
     if (node.textContent !== date) node.textContent = date;
   }
-  const angles = analogAngles(now);
-  for (const node of cache.analogs) {
-    const optimize = context.optimizeAnimations === true;
-    const lastSync = Number(node.dataset.lastAnalogSync || 0);
-    const needsSync = !optimize || !lastSync || now.getTime() - lastSync > 15_000;
-    if (needsSync) {
-      node.dataset.lastAnalogSync = String(now.getTime());
-      node.style.setProperty("--hour-angle", `${angles.hour}deg`);
-      node.style.setProperty("--minute-angle", `${angles.minute}deg`);
+  if (context.lightweight === true) {
+    for (const node of cache.analogs) {
+      if (node.dataset.lightAnalog !== "1") setupLightAnalog(node, now);
     }
-    const secondAngle = continuousSecondAngle(node, angles.second);
-    node.dataset.secondAngle = String(secondAngle);
-    node.style.setProperty("--second-angle", `${secondAngle}deg`);
+  } else {
+    const angles = analogAngles(now);
+    for (const node of cache.analogs) {
+      const optimize = context.optimizeAnimations === true;
+      const lastSync = Number(node.dataset.lastAnalogSync || 0);
+      const needsSync = !optimize || !lastSync || now.getTime() - lastSync > 15_000;
+      if (needsSync) {
+        node.dataset.lastAnalogSync = String(now.getTime());
+        node.style.setProperty("--hour-angle", `${angles.hour}deg`);
+        node.style.setProperty("--minute-angle", `${angles.minute}deg`);
+      }
+      const secondAngle = continuousSecondAngle(node, angles.second);
+      node.dataset.secondAngle = String(secondAngle);
+      node.style.setProperty("--second-angle", `${secondAngle}deg`);
+    }
   }
 
   if (!Object.prototype.hasOwnProperty.call(context, "state")) return;

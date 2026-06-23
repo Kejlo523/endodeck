@@ -156,6 +156,10 @@ screen_off() {
 }
 
 optional_deviceidle_force() {
+    if [ "$ENABLE_BATTERY_GUARD" = "1" ]; then
+        trace_line "optional deviceidle skipped: battery guard active"
+        return 0
+    fi
     run_step "deviceidle force-idle optional" 8 "dumpsys deviceidle force-idle"
     code=$?
     [ "$code" = "0" ] || trace_line "optional deviceidle failed exit=$code"
@@ -197,10 +201,17 @@ case "$1" in
         run_step "restore stay_on_while_plugged_in" 4 "settings put global stay_on_while_plugged_in 2"
         run_step "enable power stayon usb" 4 "svc power stayon usb"
         run_step "restore screen timeout" 4 "settings put system screen_off_timeout 1800000"
-        run_step "enable airplane mode setting" 4 "settings put global airplane_mode_on 1"
-        run_step "broadcast airplane mode" 6 "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true"
-        run_step "disable data" 5 "svc data disable"
-        if [ "$KEEP_WIFI_FOR_WEATHER" = "1" ]; then run_step "enable wifi" 8 "svc wifi enable"; else run_step "disable wifi" 8 "svc wifi disable"; fi
+        if [ "$KEEP_WIFI_FOR_WEATHER" = "1" ]; then
+            run_step "disable airplane mode setting" 4 "settings put global airplane_mode_on 0"
+            run_step "broadcast airplane mode off" 6 "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false"
+            run_step "disable data" 5 "svc data disable"
+            run_step "enable wifi" 8 "svc wifi enable"
+        else
+            run_step "enable airplane mode setting" 4 "settings put global airplane_mode_on 1"
+            run_step "broadcast airplane mode" 6 "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true"
+            run_step "disable data" 5 "svc data disable"
+            run_step "disable wifi" 8 "svc wifi disable"
+        fi
         wake_screen
         if [ "$ENABLE_LOCKSCREEN_BYPASS" = "1" ]; then
             run_step "disable lockscreen setting" 5 "settings put secure lockscreen.disabled 1"
